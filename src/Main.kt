@@ -1,24 +1,12 @@
-import com.rabbitmq.client.*
+import client.Client
+import io.vertx.core.Vertx
+import service.Gateway
 
-private const val EXCHANGE_NAME = "logs"
+private const val PORT = 40426
 
 fun main() {
 
-    val factory = ConnectionFactory()
-    factory.host = "localhost"
-    val connection: Connection = factory.newConnection()
-    val channel: Channel = connection.createChannel()
+    val vertx = Vertx.vertx()
 
-    channel.exchangeDeclare(EXCHANGE_NAME, "fanout")
-    val queueName: String = channel.queueDeclare().queue
-    channel.queueBind(queueName, EXCHANGE_NAME, "")
-
-    println("[*] Waiting for messages. To exit press CTRL+C")
-
-    val deliverCallback = DeliverCallback { _: String, delivery: Delivery ->
-        val message = String(delivery.body, Charsets.UTF_8)
-        println("[x] Received '$message'")
-    }
-
-    channel.basicConsume(queueName, deliverCallback, CancelCallback { })
+    vertx.deployVerticle(Gateway(PORT)) { vertx.deployVerticle(Client(PORT)) }
 }

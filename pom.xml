@@ -14,9 +14,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.rabbitmq</groupId>
-            <artifactId>amqp-client</artifactId>
-            <version>5.9.0</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>3.9.1</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
