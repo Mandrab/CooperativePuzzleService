@@ -1,0 +1,47 @@
+asyncapi: 2.0.0
+info:
+  title: Cooperative Puzzle - Websocket API
+  version: '1.0'
+  description: >-
+    These WebSocket API allows to add flavour function playing the cooperative puzzle game. These are not essential to develop a working client for the game, but allow a smarter use of game functions.
+
+servers:
+  default:
+    url: localhost
+    description: >-
+      Actually, that project is not online and is accessible only through localhost. Clone the git repo to use it.
+    variables:
+      port:
+        description: There is only one port to connect to that WebSocket.
+        default: '80'
+    protocol: ws
+
+channels:
+  /puzzle/{id}/user:
+    publish:
+      message:
+        $ref: '#/components/messages/movement'
+    subscribe:
+      message:
+        $ref: '#/components/messages/movement'
+
+components:
+
+  messages:
+    movement:
+      summary: Represent movement of a player pointer.
+      payload:
+        type: object
+        properties:
+          player:
+            type: string
+            description: player name.
+          position:
+            type: object
+            properties:
+              x:
+                type: integer
+              y:
+                type: integer
+            description: 2 dimensional position in the game-window.
+        description: new position of player pointer. It contains player\'s ID and 2D position.
