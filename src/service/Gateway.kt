@@ -5,11 +5,11 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.ServerWebSocket
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
-import java.lang.Exception
 import kotlin.random.Random
 
 
@@ -32,7 +32,7 @@ class Gateway(private val port: Int) : AbstractVerticle() {
     }
 }
 
-class MyService(private val localPort: Int) : AbstractVerticle() {
+class PuzzleService(private val localPort: Int) : AbstractVerticle() {
     private var idEvents: Long = 0
 
     override fun start() {
@@ -43,10 +43,9 @@ class MyService(private val localPort: Int) : AbstractVerticle() {
     private fun setup() {
         val router: Router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
-        //router.get("/api/state").handler { ctx: RoutingContext -> handleGetState(ctx) }
-        //router.put("/api/resources/:resID").handler { ctx: RoutingContext -> handleUpdateResState(ctx) }
         router.get("/puzzle").handler { availablePuzzle(it) }
         router.post("/puzzle/:puzzleID/user").handler { newPlayer(it) }
+        router.get("/puzzle/:puzzleID/tile").handler { getTiles(it) }
         getVertx().createHttpServer()
             .requestHandler(router) // .webSocketHandler(this::webSocketHandler)
             //.webSocketHandler { ws: ServerWebSocket -> webSocketHandler(ws) }
@@ -55,10 +54,12 @@ class MyService(private val localPort: Int) : AbstractVerticle() {
 
     private fun availablePuzzle(ctx: RoutingContext) {
         val puzzleID = DBConnector.getPuzzlesID().firstOrNull() ?: ("Puzzle" + Random.nextInt()).also {
-            DBConnector.addPuzzle(it)
+            DBConnector.addPuzzle(it, imageURL, width, height)
         }
         val response: HttpServerResponse = ctx.response()
-        response.putHeader("content-type", "application/json").end(JsonObject().put("id", puzzleID).encodePrettily())
+        response.putHeader("content-type", "application/json").end(JsonObject().put("puzzleID", puzzleID)
+            .encodePrettily())
+        response.statusCode = 200
         response.end()
     }
 
@@ -76,6 +77,26 @@ class MyService(private val localPort: Int) : AbstractVerticle() {
         }
         response.end()
     }
+
+    private fun getTiles(ctx: RoutingContext) {
+        val response = ctx.response()
+        try {
+            val puzzleID = ctx.request().getParam("puzzleID")
+            val tiles = DBConnector.getPuzzleTiles(puzzleID)
+            response.statusCode = 200
+
+            val returns = JsonArray()
+            tiles.forEach { returns.add(JsonObject().apply {
+                put("width", it.substringBefore(";"))
+                put("height", it.substringAfter(";"))
+            }) }
+            response.putHeader("content-type", "application/json").end(returns.encodePrettily())
+        } catch (e: Exception) {
+            response.statusCode = 404
+        }
+        response.end()
+    }
+
 
     private fun handleGetState(ctx: RoutingContext) {
         println("[SERVICE] New GetState from ${ctx.request().absoluteURI()}")
@@ -123,6 +144,12 @@ class MyService(private val localPort: Int) : AbstractVerticle() {
         } else {
             ws.reject()
         }
+    }
+
+    companion object {
+        private const val imageURL = "res/bletchley-park-mansion.jpg"
+        private const val width = 5
+        private const val height = 3
     }
 }
 

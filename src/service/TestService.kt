@@ -1,41 +1,46 @@
 package service
 
-import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
-import io.vertx.core.buffer.Buffer
-import io.vertx.core.http.HttpClientOptions
-import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.web.client.HttpResponse
 import io.vertx.ext.web.client.WebClient
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CompletableFuture
 
 class TestService {
+    private val vertx = Vertx.vertx()
+    private val client = WebClient.create(vertx)
 
-    @Test fun testGetPuzzleToJoin() {
-        val vertx = Vertx.vertx()
-        val client = WebClient.create(vertx)
+    @Test fun test() {
+        testGetPuzzleToJoin().thenAccept {
+            testLoginToPuzzle(it)
+            testGetTilesInfo(it)
+        }
+
+        Thread.sleep(2000)
+    }
+
+    private fun testGetPuzzleToJoin(): CompletableFuture<String> {
+        val returns = CompletableFuture<String>()
 
         client.get(port, "localhost", "/puzzle").send {
             if (it.succeeded()) {
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
                 println("Response: $body")
+                returns.complete(body.getString("puzzleID"))
             } else {
                 println("Something went wrong ${it.cause().message}")
+                returns.completeExceptionally(null)
             }
         }
-        Thread.sleep(2000)
+        return returns
     }
 
-    @Test fun testLoginToPuzzle() {
-        val vertx = Vertx.vertx()
-        val client = WebClient.create(vertx)
+    private fun testLoginToPuzzle(puzzleID: String) {
+        val params = JsonObject().put("playerID", puzzleID)
 
-        val params = JsonObject().put("playerID", "player1")
-
-        client.post(port, "localhost", "/puzzle/puzzle1/user").sendJson(params) {
+        client.post(port, "localhost", "/puzzle/$puzzleID/user").sendJson(params) {
             if (it.succeeded()) {
                 val response = it.result()
                 val code = response.statusCode()
@@ -44,7 +49,20 @@ class TestService {
                 println("Something went wrong ${it.cause().message}")
             }
         }
-        Thread.sleep(2000)
+    }
+
+    private fun testGetTilesInfo(puzzleID: String) {
+        client.get(port, "localhost", "/puzzle/$puzzleID/tile").send {
+            if (it.succeeded()) {
+                val response = it.result()
+                val code = response.statusCode()
+                println("Status code: $code")
+            } else {
+                println("Something went wrong ${it.cause().message}")
+            }
+        }
+    }
+
 
         /*
 
@@ -99,13 +117,13 @@ class TestService {
                       System.out.println(">> " + frame);
                   });
               // }
-            });*/
-    }
+            });
+    }*/
 
     private val port = 40426
 
     @Before fun startService() {
-        val ready = Vertx.vertx().deployVerticle(MyService(port))
+        val ready = Vertx.vertx().deployVerticle(PuzzleService(port))
         while (!ready.isComplete) Thread.sleep(100) // TODO
     }
 }
