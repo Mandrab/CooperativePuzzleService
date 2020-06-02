@@ -51,15 +51,26 @@ class TestService {
         }
     }
 
-    private fun testGetTilesInfo(puzzleID: String) {
+    private fun testGetTilesInfo(puzzleID: String): CompletableFuture<List<Tile>> {
+        val result = CompletableFuture<List<Tile>>()
         client.get(port, "localhost", "/puzzle/$puzzleID/tile").send {
             if (it.succeeded()) {
                 val response = it.result()
                 val code = response.statusCode()
-                println("Status code: $code")
+                println("Status code: $code ${response.body()}")
+                result.complete(response.body().toJsonArray().map { it as JsonObject }.map { Tile.parse(it) })
             } else {
                 println("Something went wrong ${it.cause().message}")
+                result.completeExceptionally(null)
             }
+        }
+        return result
+    }
+
+    private data class Tile(val ID: Int, val currentPosition: Pair<Int, Int>) {
+        companion object {
+            fun parse(jo: JsonObject) = Tile(jo.getString("ID").toInt(), Pair(jo.getString("currentX").toInt(),
+                    jo.getString("currentY").toInt()))
         }
     }
 

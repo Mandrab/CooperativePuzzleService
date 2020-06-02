@@ -87,8 +87,11 @@ class PuzzleService(private val localPort: Int) : AbstractVerticle() {
 
             val returns = JsonArray()
             tiles.forEach { returns.add(JsonObject().apply {
-                put("width", it.substringBefore(";"))
-                put("height", it.substringAfter(";"))
+                put("ID", it.substringBefore(";"))
+                it.substringAfterLast(";").let {
+                    put("currentX", it.substringBefore(" "))
+                    put("currentY", it.substringAfter(" "))
+                }
             }) }
             response.putHeader("content-type", "application/json").end(returns.encodePrettily())
         } catch (e: Exception) {

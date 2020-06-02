@@ -13,7 +13,7 @@ object DBConnector {
     fun addPuzzle(puzzleID: String, imageURL: String, gridx: Int, gridy: Int) {
         File(PUZZLES_LIST_FILE).appendText("$puzzleID; $imageURL; $gridx; $gridy")
         File(puzzleID + TILES_SUFFIX).writeText((0 until gridy).joinToString("\n") { y ->
-            (0 until gridx).joinToString("\n") { x -> "${x + gridx * y} $x $y" }
+            (0 until gridx).joinToString("\n") { x -> "${x + gridx * y};$x $y;$x $y" }
         })
     }
 
@@ -24,7 +24,6 @@ object DBConnector {
     }
 
     fun getPuzzleTiles(puzzleID: String) = File(puzzleID + TILES_SUFFIX).readLines()
-            .map { it.substringBefore(";").substringBefore(";") }
 
     fun addPlayer(puzzleID: String, playerID: String) {
         check(getPuzzlesID().contains(puzzleID))
