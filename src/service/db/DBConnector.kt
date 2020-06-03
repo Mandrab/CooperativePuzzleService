@@ -53,12 +53,12 @@ object DBConnector {
         return playerID
     }
 
-    fun updateTilePosition(puzzleID: String, tileID: String, newPosX: Int, newPosY: Int): Boolean {
+    fun updateTilePosition(puzzleID: String, tileID: String, newColumn: Int, newRow: Int): Boolean {
         if (!getPuzzlesID().contains(puzzleID)) return false
 
         val tiles = File(PATH_PREFIX + puzzleID + TILES_SUFFIX).readLines().map { TileInfo.parse(JsonObject(it)) }
         val swapTile1 = tiles.firstOrNull { it.tileID == tileID }
-        val swapTile2 = tiles.firstOrNull { it.currentPosition == Pair(newPosX, newPosY) }
+        val swapTile2 = tiles.firstOrNull { it.currentPosition == Pair(newColumn, newRow) }
 
         if (swapTile1 == null || swapTile2 == null) return false
 

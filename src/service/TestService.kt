@@ -160,7 +160,12 @@ class TestService {
             assert(it.succeeded())
             assertEquals(404, it.result().statusCode())
         }
-        // TODO check 409
+        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}/${tileID}").sendJsonObject(
+            JsonObject().put("playerToken", playerID).put("newColumn", Int.MIN_VALUE).put("newRow", Int.MIN_VALUE)
+        ) {
+            assert(it.succeeded())
+            assertEquals(409, it.result().statusCode())
+        }
     }
 
     /**

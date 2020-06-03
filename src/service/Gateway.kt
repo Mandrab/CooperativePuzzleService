@@ -146,11 +146,18 @@ class Gateway : AbstractVerticle() {
             return
         }
 
-        // TODO switch position (possible 409)
-        /*val newPosX = ctx.request().getParam("x").toInt()
-        val newPosY = ctx.request().getParam("y").toInt()
-        val update = DBConnector.updateTilePosition(puzzleID, tiles, newPosX, newPosY)*/
+        val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID)!!
+        val newColumn = ctx.bodyAsJson.getInteger("newColumn")
+        val newRow = ctx.bodyAsJson.getInteger("newRow")
+        if (newColumn < 0 || newColumn > puzzleInfo.columnsCount || newRow < 0 || newRow > puzzleInfo.rowsCount) {
+            ctx.response().apply { statusCode = 409 }.end()
+            return
+        }
 
+        if (!DBConnector.updateTilePosition(puzzleID, tileID, newColumn, newRow)) {
+            ctx.response().apply { statusCode = 500 }.end()
+            return
+        }
         ctx.response().apply { statusCode = 200 }.end()
     }
 
