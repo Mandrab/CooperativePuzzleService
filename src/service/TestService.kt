@@ -74,6 +74,19 @@ class TestService {
         }
     }
 
+    private fun testUpdatePosition(puzzleID: String, tileID: String, newPosition: Pair<Int, Int>, currentPosition: Pair<Int, Int>){
+        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tileID).put("x", newPosition.first).put("y", newPosition.second)
+        client.get(port, "localhost", "/puzzle/$puzzleID/$tileID").sendJson(params) {
+            if (it.succeeded()) {
+                val response = it.result()
+                val code = response.statusCode()
+                println("Status code: $code ${response.body()}")
+            } else {
+                println("Something went wrong ${it.cause().message}")
+            }
+        }
+    }
+
 
         /*
 

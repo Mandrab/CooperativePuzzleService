@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import src.puzzle.Tile
 import kotlin.random.Random
 
 
@@ -46,6 +47,7 @@ class PuzzleService(private val localPort: Int) : AbstractVerticle() {
         router.get("/puzzle").handler { availablePuzzle(it) }
         router.post("/puzzle/:puzzleID/user").handler { newPlayer(it) }
         router.get("/puzzle/:puzzleID/tile").handler { getTiles(it) }
+        router.put("/puzzle/:puzzleID/:tileID").handler{ updateTilePosition(it) }
         getVertx().createHttpServer()
             .requestHandler(router) // .webSocketHandler(this::webSocketHandler)
             //.webSocketHandler { ws: ServerWebSocket -> webSocketHandler(ws) }
@@ -94,6 +96,21 @@ class PuzzleService(private val localPort: Int) : AbstractVerticle() {
                 }
             }) }
             response.putHeader("content-type", "application/json").end(returns.encodePrettily())
+        } catch (e: Exception) {
+            response.statusCode = 404
+        }
+        response.end()
+    }
+
+    private fun updateTilePosition(ctx: RoutingContext){
+        val response = ctx.response()
+        try {
+            val puzzleID = ctx.request().getParam("puzzleID")
+            val tiles = ctx.request().getParam("tileID")
+            val newPosX = ctx.request().getParam("x").toInt()
+            val newPosY = ctx.request().getParam("y").toInt()
+            val update = DBConnector.updateTilePosition(puzzleID, tiles, newPosX, newPosY)
+            response.statusCode = 200
         } catch (e: Exception) {
             response.statusCode = 404
         }

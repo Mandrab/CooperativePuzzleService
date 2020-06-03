@@ -29,4 +29,16 @@ object DBConnector {
         check(getPuzzlesID().contains(puzzleID))
         File(puzzleID + PLAYERS_SUFFIX).appendText(playerID)
     }
+
+    fun updateTilePosition(puzzleID: String, tileID: String, newPosX: Int, newPosY: Int) {
+        if(File(puzzleID + TILES_SUFFIX).exists()){
+            val tile = File(puzzleID + TILES_SUFFIX).readLines().first { it.substringBefore(";") == tileID }
+            val tileUpd = File(puzzleID + TILES_SUFFIX).readLines().first { it.substringAfterLast(";") == "$newPosX $newPosY" }
+
+            File(puzzleID + TILES_SUFFIX).writeText(File(puzzleID + TILES_SUFFIX).readLines().map {
+                if (it == tileUpd) "${tileUpd.substringBefore(";")};${tileUpd.substringBefore(";")};${tile.substringAfterLast(";")}"
+                if ( it == tile)  "${tile.substringBefore(";")};${tile.substringBefore(";")};${tileUpd.substringAfterLast(";")}"
+                else it}.joinToString { "\n" })
+        }
+    }
 }
