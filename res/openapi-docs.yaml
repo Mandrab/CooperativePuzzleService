@@ -1,0 +1,266 @@
+openapi: 3.0.0
+
+info:
+  description: >
+    This API allow to connect to the collaborative puzzle service. Actually it
+    is not hosted anywhere, but the project is available for try on
+    [GitHub](https://github.com/Mandrab/pcd-03-2). TODO link.
+  version: "1.0.0-oas3"
+  title: Collaborative Puzzle Game - RESTful API
+  contact:
+    email: paolobaldini01@gmail.com
+  license:
+    name: GPL-2.0
+    url: 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.html'
+
+servers:
+  - url: 'https://virtserver.swaggerhub.com/pb.mandrab/test/1.0.0'
+
+tags:
+  - name: puzzle
+    description: Join cooperative puzzle to play
+
+paths:
+
+  '/puzzle':
+    post:
+      operationId: createPuzzle
+      tags:
+        - puzzle
+      summary: Create a new game session on which play
+      responses:
+        '201':
+          description: Return an object containing the ID, image URI and grid-size (i.e., rows and columns) of the created puzzle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Puzzle'
+        # TODO impossibile creare
+          #links:
+          #  getPuzzle:
+          #    operationId: getPuzzle
+          #    parameters:
+          #      puzzleID: '$response.body#/puzzleID'
+          #    description: >
+          #      The `puzzleID` value returned in the response can be used as
+          #      the `puzzleID` parameter in `GET /puzzle/{puzzleID}`.
+    get:
+      operationId: getPuzzlesIDs
+      tags:
+        - puzzle
+      summary: Return a collection of all the open game-sessions' IDs
+      responses:
+        '200':
+          description: Return a json-array containing all the puzzle-sessions' IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  '/puzzle/{puzzleID}':
+    get:
+      operationId: getPuzzleInfo
+      tags:
+        - puzzle
+      summary: Access information of an in-game puzzle
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which take information
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Return information about the puzzle, including\:<br/>
+            - image URL<br/>
+            - size of the puzzle (i.e., columns and rows)<br/>
+            - positions of all the tiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleInfo'
+        '404':
+          description: Puzzle not found
+  
+  '/puzzle/{puzzleID}/tiles':
+    get:
+      operationId: getPuzzleTiles
+      tags:
+        - puzzle
+      summary: Get tiles collection of a puzzle
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which take information
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Return an array containing the tiles of the puzzle. Only current position is returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tile'
+        '404':
+          description: Puzzle not found
+
+  '/puzzle/{puzzleID}/{tileID}':
+    get:
+      operationId: getPuzzleTile
+      tags:
+        - puzzle
+      summary: Get information about a puzzle's tile
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which tile belongs to
+          schema:
+            type: string
+        - in: path
+          name: tileID
+          required: true
+          description: ID of the tile of which take information
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Return an object containing tile ID and current position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixPosition'
+        '404':
+          description: Puzzle or tile not found
+    put:
+      operationId: updatePuzzleTile
+      tags:
+        - puzzle
+      summary: Update information about a puzzle's tile
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which tile belongs to
+          schema:
+            type: string
+        - in: path
+          name: tileID
+          required: true
+          description: ID of the tile of which update information
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerToken:
+                  description: ID of the player in the game session
+                  type: string
+                newColumn:
+                  description: column of the puzzle on which move the tile (switch with present tile)
+                  type: integer
+                newRow:
+                  description: row of the puzzle on which move the tile (switch with present tile)
+                  type: integer
+        description: Contains information about where move the tile of specified ID (i.e., the new row and column) and ID of the user making the move.
+        required: true
+      responses:
+        '200':
+          description: Return an object containing tile ID and current position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixPosition'
+        '401':
+          description: Subject trying to update the resource not results as a player of the puzzle
+        '404':
+          description: Puzzle or tile not found
+        '409':
+          description: Illegal position
+
+  '/puzzle/{puzzleID}/user':
+    post:
+      operationId: joinUser
+      tags:
+        - puzzle
+      summary: Make a user join the game session
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle on which join
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Confirm join to the game
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playerToken:
+                    type: string
+                    description: Represents the player inside the game
+        '404':
+          description: Puzzle not found
+
+components:
+
+  schemas:
+    Puzzle:
+      type: object
+      properties:
+        puzzleID:
+          type: string
+        imageURL:
+          type: string
+        columns:
+          type: integer
+        rows:
+          type: integer
+      description: An object containing the ID, image URI and grid-size (i.e., rows and columns) of the created puzzle.
+      
+    PuzzleInfo:
+      type: object
+      properties:
+        imageURL:
+          type: string
+        columns:
+          type: integer
+        rows:
+          type: integer
+        tiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tile'
+      description: An object containing information about image URI, grid-size (i.e., rows and columns) and tiles of the puzzle.
+
+    Tile:
+      type: object
+      properties:
+        tileID:
+          type: integer
+        column:
+          type: integer
+        row:
+          type: integer
+      description: An object containing information about a puzzle tile. Specifically it contains ID and actual position (i.e., column and row) of the tile.
+    
+    MatrixPosition:
+      type: object
+      properties:
+        column:
+          type: integer
+        row:
+          type: integer
+      description: An object representing a position in a 2-dimensional matrix.

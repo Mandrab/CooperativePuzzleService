@@ -2,6 +2,7 @@ package service.db
 
 import io.vertx.core.json.JsonObject
 import java.io.File
+import kotlin.random.Random
 
 /**
  * This class *simulate* a db-connector to store files on a DB.
@@ -33,16 +34,23 @@ object DBConnector {
     fun getPuzzleInfo(puzzleID: String): PuzzleInfo? = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()
             ?.map { PuzzleInfo.parse(JsonObject(it)) }?.firstOrNull { it.puzzleID == puzzleID }
 
+    fun getPuzzleTiles(puzzleID: String) = File(PATH_PREFIX + puzzleID + TILES_SUFFIX).readLines()
+        .map { TileInfo.parse(JsonObject(it)) }
+
+    fun getPuzzlePlayers(puzzleID: String): List<PlayerInfo> = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
+        .takeIf { it.exists() }?.readLines()?.map { PlayerInfo.parse(JsonObject(it)) } ?: emptyList()
+
     fun getPuzzlesID(): List<String> = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()
             ?.map { PuzzleInfo.parse(JsonObject(it)).puzzleID } ?: emptyList()
 
-    fun getPuzzleTiles(puzzleID: String) = File(PATH_PREFIX + puzzleID + TILES_SUFFIX).readLines()
-            .map { TileInfo.parse(JsonObject(it)) }
-
-    fun addPlayer(puzzleID: String, playerID: String): Boolean {
-        if (!getPuzzlesID().contains(puzzleID)) return false
+    fun addPlayer(puzzleID: String): String? {
+        if (!getPuzzlesID().contains(puzzleID)) return null
+        val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
+        var playerID: String
+        do playerID = Random.nextInt(0, Int.MAX_VALUE).toString()
+        while(lines.contains(playerID))
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).appendText(PlayerInfo(playerID).toJson().toString() + "\n")
-        return true
+        return playerID
     }
 
     fun updateTilePosition(puzzleID: String, tileID: String, newPosX: Int, newPosY: Int): Boolean {

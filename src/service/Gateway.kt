@@ -1,6 +1,7 @@
 package service
 
 import io.vertx.core.AbstractVerticle
+import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.ServerWebSocket
 import io.vertx.core.json.JsonArray
@@ -25,8 +26,10 @@ class Gateway : AbstractVerticle() {
 
             get("/puzzle/:puzzleID").handler { puzzleInfo(it) }
 
-            get("/puzzle/:puzzleID/tile").handler { getTiles(it) }
+            get("/puzzle/:puzzleID/tiles").handler { getTiles(it) }
+            get("/puzzle/:puzzleID/:tileID").handler { getTile(it) }
             put("/puzzle/:puzzleID/:tileID").handler{ updateTilePosition(it) }
+
             post("/puzzle/:puzzleID/user").handler { newPlayer(it) }
         }
 
@@ -47,7 +50,7 @@ class Gateway : AbstractVerticle() {
             .put("rows", GRID_ROW_COUNT).encode()
 
         val response = ctx.response()
-        response.statusCode = 200
+        response.statusCode = 201
         response.putHeader("content-type", "application/json").end(jResponse)
     }
 
@@ -86,57 +89,82 @@ class Gateway : AbstractVerticle() {
         response.putHeader("content-type", "application/json").end(jObject.encode())
     }
 
-    private fun newPlayer(ctx: RoutingContext) {
-        val response = ctx.response()
-        try {
-            val puzzleID = ctx.request().getParam("puzzleID")
-            val playerID = ctx.bodyAsJson.getValue("playerID") as String
-
-            DBConnector.addPlayer(puzzleID, playerID)
-
-            response.statusCode = 201
-        } catch(e: Exception) {
-            response.statusCode = 409
-        }
-        response.end()
-    }
-
     private fun getTiles(ctx: RoutingContext) {
-        val response = ctx.response()
-        try {
-            val puzzleID = ctx.request().getParam("puzzleID")
-            val tiles = DBConnector.getPuzzleTiles(puzzleID)
+        if (!ctx.request().params().contains("puzzleID")) return
 
-            val returns = JsonArray()
-            tiles.forEach { returns.add(JsonObject().apply {
-                put("ID", it.tileID)
-                it.currentPosition.let {
-                    put("currentX", it.first)
-                    put("currentY", it.second)
-                }
-            }) }
-            response.statusCode = 200
-            response.putHeader("content-type", "application/json").end(returns.encodePrettily())
-        } catch (e: Exception) {
-            response.statusCode = 404
-        }
-        response.end()
+        val puzzleID = ctx.request().getParam("puzzleID")
+        if (!DBConnector.getPuzzlesID().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+
+        val jArray = JsonArray()
+        DBConnector.getPuzzleTiles(puzzleID).map {
+            JsonObject().apply {
+                put("tileID", it.tileID)
+                put("column", it.currentPosition.first)
+                put("row", it.currentPosition.second)
+            }
+        }.forEach { jArray.add(it) }
+
+        val response = ctx.response()
+        response.statusCode = 200
+        response.putHeader("content-type", "application/json").end(jArray.encode())
     }
 
-    private fun updateTilePosition(ctx: RoutingContext){
+    private fun getTile(ctx: RoutingContext) {
+        if (!requestContains(ctx.request(), null, "puzzleID", "tileID")) return
+
+        val puzzleID = ctx.request().getParam("puzzleID")
+        val tileID = ctx.request().getParam("tileID")
+
+        val tile = DBConnector.getPuzzleTiles(puzzleID).firstOrNull { it.tileID == tileID }
+        tile ?: let { ctx.response().apply { statusCode = 404 }.end(); return }
+
         val response = ctx.response()
-        try {
-            val puzzleID = ctx.request().getParam("puzzleID")
-            val tiles = ctx.request().getParam("tileID")
-            val newPosX = ctx.request().getParam("x").toInt()
-            val newPosY = ctx.request().getParam("y").toInt()
-            val update = DBConnector.updateTilePosition(puzzleID, tiles, newPosX, newPosY)
-            response.statusCode = 200
-        } catch (e: Exception) {
-            response.statusCode = 404
-        }
-        response.end()
+        response.statusCode = 200
+        response.putHeader("content-type", "application/json").end(
+            JsonObject().apply {
+                put("tileID", tile.tileID)
+                put("column", tile.currentPosition.first)
+                put("row", tile.currentPosition.second)
+            }.encode()
+        )
     }
+
+    private fun updateTilePosition(ctx: RoutingContext) {
+        if (!requestContains(ctx.request(), ctx.bodyAsJson, "puzzleID", "tileID", "playerToken","newColumn", "newRow")) return
+
+        val puzzleID = ctx.request().getParam("puzzleID")
+        val tileID = ctx.request().getParam("tileID")
+
+        if (!DBConnector.getPuzzlesID().contains(puzzleID) || DBConnector.getPuzzleTiles(puzzleID).all { it.tileID != tileID }) {
+            ctx.response().apply { statusCode = 404 }.end()
+            return
+        }
+
+        val playerID = ctx.bodyAsJson.getString("playerToken")
+        if (DBConnector.getPuzzlePlayers(puzzleID).all { it.playerID != playerID }) {
+            ctx.response().apply { statusCode = 401 }.end()
+            return
+        }
+
+        // TODO switch position (possible 409)
+        /*val newPosX = ctx.request().getParam("x").toInt()
+        val newPosY = ctx.request().getParam("y").toInt()
+        val update = DBConnector.updateTilePosition(puzzleID, tiles, newPosX, newPosY)*/
+
+        ctx.response().apply { statusCode = 200 }.end()
+    }
+
+    private fun newPlayer(ctx: RoutingContext) {
+        if (!requestContains(ctx.request(), null, "puzzleID")) return
+
+        val puzzleID = ctx.request().getParam("puzzleID")
+        if (!DBConnector.getPuzzlesID().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+
+        val playerID = DBConnector.addPlayer(puzzleID)!!
+        ctx.response().putHeader("content-type", "application/json").apply { statusCode = 201 }
+                .end(JsonObject().put("playerToken", playerID).encode())
+    }
+
 // TODO rest ws join... atm do in recv
     private fun webSocketHandler(ws: ServerWebSocket) {
         if (ws.path().matches("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/user".toRegex())) {
@@ -167,6 +195,9 @@ class Gateway : AbstractVerticle() {
             ws.reject()
         }
     }
+
+    private fun requestContains(request: HttpServerRequest, body: JsonObject?, vararg keys: String): Boolean =
+            keys.all { request.params().contains(it) || body?.containsKey(it) ?: false }
 
     companion object {
         private const val IMAGE_URL = "res/bletchley-park-mansion.jpg"

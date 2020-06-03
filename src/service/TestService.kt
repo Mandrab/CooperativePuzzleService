@@ -1,12 +1,16 @@
 package service
 
+import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.CompletableFuture
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class TestService {
@@ -16,19 +20,28 @@ class TestService {
     private val client = WebClient.create(vertx)
 
     @Test fun test() {
-        var visited = false
+        var visited = true
 
-        createPuzzle().thenAccept {
+        createPuzzle().onSuccess { puzzleID ->
             getPuzzlesIDs()
-            getPuzzleInfo(it)
+            getPuzzleInfo(puzzleID)
+            val tilesFuture = getPuzzleTiles(puzzleID).onSuccess { tileID ->
+                getPuzzleTile(puzzleID, tileID.first())
+            }.onFailure { fail() }
+            joinWithUser(puzzleID).onSuccess { player ->
+                tilesFuture.onSuccess { tiles ->
+                    updatePuzzleTile(puzzleID, tiles.first(), player)
+                }
+            }
 
-            testGetPuzzleToJoin().thenAccept {
+
+            /*testGetPuzzleToJoin().onSuccess {
                 testLoginToPuzzle(it)
                 testGetTilesInfo(it)
 
                 visited = true
-            }
-        }
+            }.onFailure { fail() }*/
+        }.onFailure { fail() }
 
         Thread.sleep(2000)
         assert(visited) { "All the callback should have been called" }
@@ -37,8 +50,8 @@ class TestService {
     /**
      * Test creation of a new puzzle
      */
-    private fun createPuzzle(): CompletableFuture<String> {
-        val returns = CompletableFuture<String>()
+    private fun createPuzzle(): Future<String> {
+        val returns = Promise.promise<String>()
 
         client.post(Gateway.PORT, "localhost", "/puzzle").send {
             assert(it.succeeded())
@@ -52,7 +65,7 @@ class TestService {
 
             returns.complete(body.getString("puzzleID"))
         }
-        return returns
+        return returns.future()
     }
 
     /**
@@ -79,51 +92,101 @@ class TestService {
             assert(body.containsKey("rows"))
             assert(body.containsKey("tiles"))
 
+
             val jArray = body.getJsonArray("tiles")
 
             assertFalse(jArray.isEmpty)
-            assert(jArray.all { it is JsonObject })
-
-            val first = jArray.first() as JsonObject
-            assert(first.containsKey("tileID"))
-            assert(first.containsKey("column"))
-            assert(first.containsKey("row"))
+            assert(jArray.all { t -> t is JsonObject })
+            assert(jArray.all { t -> (t as JsonObject).containsKey("tileID") })
+            assert(jArray.all { t -> (t as JsonObject).containsKey("column") })
+            assert(jArray.all { t -> (t as JsonObject).containsKey("row") })
         }
     }
 
-    private fun testGetPuzzleToJoin(): CompletableFuture<String> {
-        val returns = CompletableFuture<String>()
+    /**
+     * Test get of puzzle tiles
+     */
+    private fun getPuzzleTiles(puzzleID: String): Future<List<String>> {
+        val result = Promise.promise<List<String>>()
 
-        client.get(Gateway.PORT, "localhost", "/puzzle").send {
-            if (it.succeeded()) {
-                val response = it.result()
-                val body = response.bodyAsJsonObject()
-                println("Response: $body")
-                returns.complete(body.getString("puzzleID"))
-            } else {
-                println("Something went wrong ${it.cause().message}")
-                returns.completeExceptionally(null)
-            }
+        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/tiles").send {
+            assert(it.succeeded())
+
+            val jArray = it.result().bodyAsJsonArray().map { t -> t as JsonObject }
+
+            assert(jArray.all { t -> t.containsKey("tileID") })
+            assert(jArray.all { t -> t.containsKey("column") })
+            assert(jArray.all { t -> t.containsKey("row") })
+
+            result.complete(jArray.map { it.getString("tileID") })
         }
-        return returns
+        return result.future()
     }
 
-    private fun testLoginToPuzzle(puzzleID: String) {
-        val params = JsonObject().put("playerID", playerID)
+    /**
+     * Test get of a puzzle tile
+     */
+    private fun getPuzzleTile(puzzleID: String, tileID: String) {
+        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").send {
+            assert(it.succeeded())
 
-        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code")
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
+            val jObject = it.result().bodyAsJsonObject()
+
+            assert(jObject.containsKey("tileID"))
+            assert(jObject.containsKey("column"))
+            assert(jObject.containsKey("row"))
         }
     }
 
-    private fun testGetTilesInfo(puzzleID: String): CompletableFuture<List<Tile>> {
-        val result = CompletableFuture<List<Tile>>()
+    /**
+     * Test update of a puzzle tile
+     */
+    private fun updatePuzzleTile(puzzleID: String, tileID: String, playerID: String) {
+        client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").sendJsonObject(
+            JsonObject().put("playerToken", playerID).put("newColumn", 3).put("newRow", 2)
+        ) {
+            assert(it.succeeded())
+            assertEquals(200, it.result().statusCode())
+        }
+        client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").sendJsonObject(
+            JsonObject().put("playerToken", "${playerID}a").put("newColumn", 3).put("newRow", 2)
+        ) {
+            assert(it.succeeded())
+            assertEquals(401, it.result().statusCode())
+        }
+        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/${tileID}a").sendJsonObject(
+            JsonObject().put("playerToken", playerID).put("newColumn", 3).put("newRow", 2)
+        ) {
+            assert(it.succeeded())
+            assertEquals(404, it.result().statusCode())
+        }
+        // TODO check 409
+    }
+
+    /**
+     * Test join to a game
+     */
+    private fun joinWithUser(puzzleID: String): Future<String> {
+        val result = Promise.promise<String>()
+
+        client.post(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/user").sendJson(
+            JsonObject().put("playerID", playerID)
+        ) {
+            assertEquals(404, it.result().statusCode())
+        }
+        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").sendJson(
+            JsonObject().put("playerID", playerID)
+        ) {
+            assertEquals(201, it.result().statusCode())
+            assert(it.result().bodyAsJsonObject().containsKey("playerToken"))
+
+            result.complete(it.result().bodyAsJsonObject().getString("playerToken"))
+        }
+        return result.future()
+    }
+/*
+    private fun testGetTilesInfo(puzzleID: String): Future<List<Tile>> {
+        val result = Promise.promise<List<Tile>>()
         client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/tile").send {
             if (it.succeeded()) {
                 val response = it.result()
@@ -132,10 +195,10 @@ class TestService {
                 result.complete(response.body().toJsonArray().map { it as JsonObject }.map { Tile.parse(it) })
             } else {
                 println("Something went wrong ${it.cause().message}")
-                result.completeExceptionally(null)
+                result.fail("")
             }
         }
-        return result
+        return result.future()
     }
 
     @Test fun testWebSocket() {
@@ -186,7 +249,7 @@ class TestService {
                 println("Something went wrong ${it.cause().message}")
             }
         }
-    }
+    }*/
 
     @Before fun startService() {
         val ready = Vertx.vertx().deployVerticle(Gateway())
