@@ -1,6 +1,7 @@
 package service
 
 import io.vertx.core.Vertx
+import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import org.junit.Before
@@ -67,6 +68,35 @@ class TestService {
         return result
     }
 
+    @Test fun testWebSocket() {
+        client.get(port, "localhost", "/puzzle").send {
+            if (it.succeeded()) {
+                val response = it.result()
+                val body = response.bodyAsJsonObject()
+                println("Response: $body")
+
+                val client: HttpClient = vertx.createHttpClient()
+                val path = "/puzzle/${it.result().bodyAsJsonObject().getString("puzzleID")}/user"
+
+                client.webSocket(port, "localhost", path) {
+                    val msg = JsonObject().put("player", "marco").put("position", JsonObject().put("x", 5).put("y", 6))
+                    it.result().writeBinaryMessage(msg.toBuffer())
+                    it.result().writeTextMessage(msg.encode())
+
+                    it.result().textMessageHandler {
+                        println(it)
+                    }.exceptionHandler {
+                        TODO()
+                    }.closeHandler {
+                        TODO()
+                    }
+                }
+            } else {
+                println("Something went wrong ${it.cause().message}")
+            }
+        }
+    }
+
     private data class Tile(val ID: Int, val currentPosition: Pair<Int, Int>) {
         companion object {
             fun parse(jo: JsonObject) = Tile(jo.getString("ID").toInt(), Pair(jo.getString("currentX").toInt(),
@@ -87,67 +117,10 @@ class TestService {
         }
     }
 
-
-        /*
-
-        /* Doing a PUT with a JSON msg */client
-            .put(port, "localhost", "/api/resources/res100") // .addQueryParam("param", "param_value")
-            .sendJsonObject(
-                newState
-            ) { ar: AsyncResult<HttpResponse<Buffer?>> ->
-                if (ar.succeeded()) {
-                    val response = ar.result()
-                    val body = response.bodyAsJsonObject()
-                    println("Response: $body")
-                } else {
-                    println("Something went wrong " + ar.cause().message)
-                }
-            }
-
-        /* Doing a PUT with a JSON msg */client
-            .post(port, "localhost", "/api/actions/start")
-            .sendJsonObject(
-                newState
-            ) { ar: AsyncResult<HttpResponse<Buffer?>> ->
-                if (ar.succeeded()) {
-                    val response = ar.result()
-                    val body = response.bodyAsJsonObject()
-                    println("Response: $body")
-                } else {
-                    println("Something went wrong " + ar.cause().message)
-                }
-            }
-
-        /* WEB SOCKET */
-        val options = HttpClientOptions()
-            .setDefaultHost("localhost")
-            .setDefaultPort(port)
-        vertx.createHttpClient(options).webSocket(
-            "/api/events"
-        ) { res: AsyncResult<WebSocket> ->
-            if (res.succeeded()) {
-                println("Connected!")
-                val ws = res.result()
-                ws.frameHandler { frame -> println(">> $frame") }
-            }
-        }*/
-
-        /*
-        vertx.createHttpClient().websocket(port,"localhost","/api/events", res -> {
-              // if (res.succeeded()) {
-                  System.out.println("Connected!");
-                  // WebSocket ws = res.result();
-                  res.frameHandler(frame -> {
-                      System.out.println(">> " + frame);
-                  });
-              // }
-            });
-    }*/
-
     private val port = 40426
 
     @Before fun startService() {
-        val ready = Vertx.vertx().deployVerticle(PuzzleService(port))
+        val ready = Vertx.vertx().deployVerticle(Gateway(port))
         while (!ready.isComplete) Thread.sleep(100) // TODO
     }
 }

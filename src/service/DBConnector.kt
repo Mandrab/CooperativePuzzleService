@@ -41,4 +41,21 @@ object DBConnector {
                 else it}.joinToString { "\n" })
         }
     }
+
+    fun playerWS(puzzleID: String, playerID: String, wsHandlerID: String) {
+        check(getPuzzlesID().contains(puzzleID))
+        File(puzzleID + PLAYERS_SUFFIX).writeText(
+            File(puzzleID + PLAYERS_SUFFIX).readLines().joinToString("\n") {
+                if (it.substringBefore(";") == playerID) "${it.substringBefore(";")};$wsHandlerID"
+                else it
+            }
+        )
+    }
+
+    fun playerWS(puzzleID: String, playerID: String): String? = File(puzzleID + PLAYERS_SUFFIX).readLines()
+            .firstOrNull { it.substringBefore(";") == playerID }?.substringAfter(";")
+
+    fun playersWS(puzzleID: String): List<String> = File(puzzleID + PLAYERS_SUFFIX).readLines()
+            .map { it.substringAfter(";", "") }.filter { it.isNotBlank() }
+
 }
