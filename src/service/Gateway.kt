@@ -12,38 +12,78 @@ import service.db.DBConnector
 import kotlin.random.Random
 
 
-class Gateway(private val localPort: Int) : AbstractVerticle() {
+class Gateway : AbstractVerticle() {
 
     override fun start() {
-        setup()
-        println("[SERVICE] Ready")
-    }
-
-    private fun setup() {
         val router: Router = Router.router(vertx)
 
         router.apply {
             route().handler(BodyHandler.create())
-            get("/puzzle").handler { availablePuzzle(it) }
+
+            post("/puzzle").handler { newPuzzle(it) }
+            get("/puzzle").handler { availablePuzzles(it) }
+
+            get("/puzzle/:puzzleID").handler { puzzleInfo(it) }
+
             get("/puzzle/:puzzleID/tile").handler { getTiles(it) }
             put("/puzzle/:puzzleID/:tileID").handler{ updateTilePosition(it) }
             post("/puzzle/:puzzleID/user").handler { newPlayer(it) }
         }
+
         vertx.createHttpServer()
             .requestHandler(router)
             .webSocketHandler { webSocketHandler(it) }
-            .listen(localPort)
+            .listen(PORT)
     }
 
-    private fun availablePuzzle(ctx: RoutingContext) {
-        val puzzleID = DBConnector.getPuzzlesID().firstOrNull() ?: ("Puzzle" + Random.nextInt(0, Int.MAX_VALUE)).also {
-            DBConnector.addPuzzle(it, imageURL, width, height)
-        }
-        val response: HttpServerResponse = ctx.response()
-        response.putHeader("content-type", "application/json").end(JsonObject().put("puzzleID", puzzleID)
-            .encodePrettily())
+    private fun newPuzzle(ctx: RoutingContext) {
+        var puzzleID: String
+        do {
+            puzzleID = "Puzzle${Random.nextInt(0, Int.MAX_VALUE)}"
+            val accomplished = DBConnector.addPuzzle(puzzleID, IMAGE_URL, GRID_COL_COUNT, GRID_ROW_COUNT)
+        } while(!accomplished)
+
+        val jResponse = JsonObject().put("puzzleID", puzzleID).put("imageURL", IMAGE_URL).put("columns", GRID_COL_COUNT)
+            .put("rows", GRID_ROW_COUNT).encode()
+
+        val response = ctx.response()
         response.statusCode = 200
-        response.end()
+        response.putHeader("content-type", "application/json").end(jResponse)
+    }
+
+    private fun availablePuzzles(ctx: RoutingContext) {
+        val jArray = JsonArray()
+        DBConnector.getPuzzlesID().forEach { jArray.add(it) }
+
+        val response: HttpServerResponse = ctx.response()
+        response.statusCode = 200
+        response.putHeader("content-type", "application/json").end(jArray.encode())
+    }
+
+    private fun puzzleInfo(ctx: RoutingContext) {
+        if (!ctx.request().params().contains("puzzleID")) return
+
+        val puzzleID = ctx.request().getParam("puzzleID")
+        if (!DBConnector.getPuzzlesID().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+
+        val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID)!!
+        val jObject = JsonObject().apply {
+            put("imageURL", puzzleInfo.imageURL)
+            put("columns", puzzleInfo.columnsCount)
+            put("rows", puzzleInfo.rowsCount)
+
+            val jArray = JsonArray()
+            DBConnector.getPuzzleTiles(puzzleID).map {
+                JsonObject().apply {
+                    put("tileID", it.tileID)
+                    put("column", it.currentPosition.first)
+                    put("row", it.currentPosition.second)
+                }
+            }.forEach { jArray.add(it) }
+            put("tiles", jArray)
+        }
+        val response = ctx.response()
+        response.putHeader("content-type", "application/json").end(jObject.encode())
     }
 
     private fun newPlayer(ctx: RoutingContext) {
@@ -129,9 +169,11 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
     }
 
     companion object {
-        private const val imageURL = "res/bletchley-park-mansion.jpg"
-        private const val width = 5
-        private const val height = 3
+        private const val IMAGE_URL = "res/bletchley-park-mansion.jpg"
+        private const val GRID_COL_COUNT = 5
+        private const val GRID_ROW_COUNT = 3
+
+        const val PORT = 40404
     }
 }
 

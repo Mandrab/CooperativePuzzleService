@@ -1,6 +1,6 @@
 asyncapi: 2.0.0
 info:
-  title: Cooperative Puzzle - Websocket API
+  title: Collaborative Puzzle Game - Websocket API
   version: '1.0'
   description: >-
     These WebSocket API allows to add flavour function playing the cooperative puzzle game. These are not essential to develop a working client for the game, but allow a smarter use of game functions.
