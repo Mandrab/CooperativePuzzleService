@@ -77,9 +77,10 @@ class TestService {
 
                 val client: HttpClient = vertx.createHttpClient()
                 val path = "/puzzle/${it.result().bodyAsJsonObject().getString("puzzleID")}/user"
-
+println(path)
                 client.webSocket(port, "localhost", path) {
                     val msg = JsonObject().put("player", "marco").put("position", JsonObject().put("x", 5).put("y", 6))
+                    println(it.cause())
                     it.result().writeBinaryMessage(msg.toBuffer())
                     it.result().writeTextMessage(msg.encode())
 

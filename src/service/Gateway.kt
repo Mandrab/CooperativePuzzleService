@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import service.db.DBConnector
 import kotlin.random.Random
 
 
@@ -35,7 +36,7 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
     }
 
     private fun availablePuzzle(ctx: RoutingContext) {
-        val puzzleID = DBConnector.getPuzzlesID().firstOrNull() ?: ("Puzzle" + Random.nextInt()).also {
+        val puzzleID = DBConnector.getPuzzlesID().firstOrNull() ?: ("Puzzle" + Random.nextInt(0, Int.MAX_VALUE)).also {
             DBConnector.addPuzzle(it, imageURL, width, height)
         }
         val response: HttpServerResponse = ctx.response()
@@ -65,16 +66,16 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
         try {
             val puzzleID = ctx.request().getParam("puzzleID")
             val tiles = DBConnector.getPuzzleTiles(puzzleID)
-            response.statusCode = 200
 
             val returns = JsonArray()
             tiles.forEach { returns.add(JsonObject().apply {
-                put("ID", it.substringBefore(";"))
-                it.substringAfterLast(";").let {
-                    put("currentX", it.substringBefore(" "))
-                    put("currentY", it.substringAfter(" "))
+                put("ID", it.tileID)
+                it.currentPosition.let {
+                    put("currentX", it.first)
+                    put("currentY", it.second)
                 }
             }) }
+            response.statusCode = 200
             response.putHeader("content-type", "application/json").end(returns.encodePrettily())
         } catch (e: Exception) {
             response.statusCode = 404
@@ -112,6 +113,7 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
                 DBConnector.playerWS(
                     puzzleID,
                     JsonObject(it).getString("player"),
+                    null,
                     ws.binaryHandlerID()
                 )
                 DBConnector.playersWS(puzzleID).forEach { id -> println(id);vertx.eventBus().send(id, it) }
