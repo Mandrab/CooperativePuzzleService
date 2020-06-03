@@ -8,7 +8,7 @@ fun main() {
     val vertx = Vertx.vertx()
 
     vertx.deployVerticle(Gateway(PORT)) {
-        vertx.deployVerticle(Client(PORT))
-        vertx.deployVerticle(Client(PORT))
+        vertx.deployVerticle(Client("marco", PORT))
+        vertx.deployVerticle(Client("giovanni", PORT))
     }
 }

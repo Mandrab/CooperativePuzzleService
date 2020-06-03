@@ -12,6 +12,7 @@ import kotlin.random.Random
 
 
 class Gateway(private val localPort: Int) : AbstractVerticle() {
+
     override fun start() {
         setup()
         println("[SERVICE] Ready")
@@ -78,15 +79,29 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
         }
         response.end()
     }
-
+// TODO rest ws join... atm do in recv
     private fun webSocketHandler(ws: ServerWebSocket) {
         if (ws.path().matches("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/user".toRegex())) {
+            val puzzleID = ws.path().removeSurrounding("/puzzle/", "/user")
+
             ws.textMessageHandler {
-                println(it)
-                println(JsonObject(it).getString("player"))
+                DBConnector.playerWS(
+                    puzzleID,
+                    JsonObject(it).getString("player"),
+                    ws.textHandlerID()
+                )
+                DBConnector.playersWS(puzzleID).forEach { id -> vertx.eventBus().send(id, it) }
             }.binaryMessageHandler {
-                println(it)
-                println(it.toJsonObject().getString("player"))
+                DBConnector.playerWS(
+                    puzzleID,
+                    JsonObject(it).getString("player"),
+                    ws.binaryHandlerID()
+                )
+                DBConnector.playersWS(puzzleID).forEach { id -> println(id);vertx.eventBus().send(id, it) }
+            }.exceptionHandler {
+                TODO()
+            }.closeHandler {
+                TODO()
             }
         } else {
             println("Socket connection attempt rejected")

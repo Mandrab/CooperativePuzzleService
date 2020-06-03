@@ -9,14 +9,12 @@ import io.vertx.ext.web.client.WebClient
 import java.awt.Point
 
 
-class Client(private val port: Int) : AbstractVerticle() {
+class Client(val name: String, private val port: Int) : AbstractVerticle() {
+    private val view = View(this)
+
     private val webClient: WebClient by lazy { WebClient.create(vertx) }
     private val httpClient: HttpClient by lazy { vertx.createHttpClient() }
     private lateinit var webSocket: WebSocket
-
-    init {
-        View(this)
-    }
 
     override fun start() = joinPuzzle()
 
@@ -37,8 +35,19 @@ class Client(private val port: Int) : AbstractVerticle() {
         httpClient.webSocket(port, "localhost", "/puzzle/$puzzleID/user") {
             it.result()?.also { ws ->
                 webSocket = ws
+
                 ws.textMessageHandler {
-                    println(it)
+                    println(this.toString() + it)
+                    val player = JsonObject(it).getString("player")
+                    JsonObject(it).getJsonObject("position").apply {
+                        view.drawPointer(player, getInteger("x"), getInteger("y"))
+                    }
+                }.binaryMessageHandler {
+                    it.toJsonObject().getString("player")
+                    val player = it.toJsonObject().getString("player")
+                    it.toJsonObject().getJsonObject("position").apply {
+                        view.drawPointer(player, getInteger("x"), getInteger("y"))
+                    }
                 }.exceptionHandler {
                     TODO()
                 }.closeHandler {
@@ -49,7 +58,7 @@ class Client(private val port: Int) : AbstractVerticle() {
     }
 
     fun newMovement(point: Point) {
-        val msg = JsonObject().put("player", "marco").put("position", JsonObject().put("x", point.x).put("y", point.y))
+        val msg = JsonObject().put("player", name).put("position", JsonObject().put("x", point.x).put("y", point.y))
         webSocket.writeBinaryMessage(msg.toBuffer())
     }
 }
