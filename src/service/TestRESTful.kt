@@ -15,7 +15,8 @@ import kotlin.concurrent.withLock
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-class TestService {
+
+class TestRESTful {
     private val vertx = Vertx.vertx()
     private val client = WebClient.create(vertx)
 
@@ -242,76 +243,13 @@ class TestService {
         return result.future()
     }
 
-/*
-    private fun testGetTilesInfo(puzzleID: String): Future<List<Tile>> {
-        val result = Promise.promise<List<Tile>>()
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/tile").send {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code ${response.body()}")
-                result.complete(response.body().toJsonArray().map { it as JsonObject }.map { Tile.parse(it) })
-            } else {
-                println("Something went wrong ${it.cause().message}")
-                result.fail("")
-            }
-        }
-        return result.future()
-    }
-
-    @Test fun testWebSocket() {
-        client.get(Gateway.PORT, "localhost", "/puzzle").send {
-            if (it.succeeded()) {
-                val response = it.result()
-                val body = response.bodyAsJsonObject()
-                println("Response: $body")
-
-                val client: HttpClient = vertx.createHttpClient()
-                val path = "/puzzle/${it.result().bodyAsJsonObject().getString("puzzleID")}/user"
-
-                client.webSocket(Gateway.PORT, "localhost", path) {
-                    val msg = JsonObject().put("player", "marco").put("position", JsonObject().put("x", 5).put("y", 6))
-                    println(it.cause())
-                    it.result().writeBinaryMessage(msg.toBuffer())
-                    it.result().writeTextMessage(msg.encode())
-
-                    it.result().textMessageHandler {
-                        println(it)
-                    }.exceptionHandler {
-                        TODO()
-                    }.closeHandler {
-                        TODO()
-                    }
-                }
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
-        }
-    }
-
-    private data class Tile(val ID: Int, val currentPosition: Pair<Int, Int>) {
-        companion object {
-            fun parse(jo: JsonObject) = Tile(jo.getString("ID").toInt(), Pair(jo.getString("currentX").toInt(),
-                    jo.getString("currentY").toInt()))
-        }
-    }
-
-    private fun testUpdatePosition(puzzleID: String, tileID: String, newPosition: Pair<Int, Int>, currentPosition: Pair<Int, Int>){
-        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tileID).put("x", newPosition.first).put("y", newPosition.second)
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code ${response.body()}")
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
-        }
-    }*/
-
     @Before fun startService() {
-        val ready = Vertx.vertx().deployVerticle(Gateway())
-        while (!ready.isComplete) Thread.sleep(100) // TODO
+        val customLock = ResultLock(false)
+        val complete = Promise.promise<Void>()
+        Vertx.vertx().deployVerticle(Gateway(complete))
+        complete.future().onComplete { customLock.set { true } }
+        customLock.deadline(2000)
+        assert(customLock.result)
     }
 }
 
@@ -327,7 +265,7 @@ class ResultLock<T: Any>(alternativeResult: T, private val waitResult: T? = null
 
     fun set(action: () -> T) = withLock {
         result = action()
-        if (!completed && result == waitResult) {
+        if (!completed && waitResult?.let { it == result } != false) {
             completed = true
             lock.signalAll()
         }

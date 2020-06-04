@@ -43,11 +43,11 @@ object DBConnector {
             PlayerInfo.parse(JsonObject(it)) } ?: emptyList()
     }
 
-    @Synchronized fun getPuzzlesID(): List<String> = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()
+    @Synchronized fun getPuzzlesIDs(): List<String> = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()
             ?.map { PuzzleInfo.parse(JsonObject(it)).puzzleID } ?: emptyList()
 
     @Synchronized fun updateTilePosition(puzzleID: String, tileID: String, newColumn: Int, newRow: Int): Boolean {
-        if (!getPuzzlesID().contains(puzzleID)) return false
+        if (!getPuzzlesIDs().contains(puzzleID)) return false
 
         val tiles = File(PATH_PREFIX + puzzleID + TILES_SUFFIX).readLines().map { TileInfo.parse(JsonObject(it)) }
         val swapTile1 = tiles.firstOrNull { it.tileID == tileID }
@@ -76,7 +76,7 @@ object DBConnector {
     }
 
     @Synchronized fun addPlayer(puzzleID: String): String? {
-        if (!getPuzzlesID().contains(puzzleID)) return null
+        if (!getPuzzlesIDs().contains(puzzleID)) return null
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
         var playerID: String
         do playerID = Random.nextInt(0, Int.MAX_VALUE).toString()
@@ -86,27 +86,25 @@ object DBConnector {
     }
 
     @Synchronized fun newPosition(puzzleID: String, playerID: String, column: Int, row: Int) {
-        if (!getPuzzlesID().contains(puzzleID)) return
+        if (!getPuzzlesIDs().contains(puzzleID)) return
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
-        File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(lines.map { PlayerInfo.parse(JsonObject(it)) }.map {
-            when (it.playerID) {
-                playerID -> PlayerInfo(it.playerID, it.textSocketHandlerID, it.binarySocketHandlerID, Pair(column, row))
-                else -> it
-            }.toJson().encode()
-        }.joinToString("\n"))
+        File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(lines.map { PlayerInfo.parse(JsonObject(it)) }
+            .joinToString("\n") {
+                when (it.playerID) {
+                    playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(column, row))
+                    else -> it
+                }.toJson().encode()
+            })
     }
 
-    @Synchronized fun playerWS(puzzleID: String, playerID: String, textHandlerID: String?, binaryHandlerID: String? = null): Boolean {
-        if (!getPuzzlesID().contains(puzzleID)) return false
+    @Synchronized fun playerWS(puzzleID: String, playerID: String, socketHandlerID: String? = null): Boolean {
+        if (!getPuzzlesIDs().contains(puzzleID)) return false
 
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(
             File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).readLines().map { PlayerInfo.parse(JsonObject(it)) }
                 .joinToString("\n") {
                     when (it.playerID) {
-                        playerID -> PlayerInfo(
-                            it.playerID,
-                            textHandlerID ?: it.textSocketHandlerID,
-                            binaryHandlerID ?: it.binarySocketHandlerID)
+                        playerID -> PlayerInfo(it.playerID, socketHandlerID ?: it.socketHandlerID)
                         else -> it
                     }.toJson().encode()
             }
@@ -114,12 +112,9 @@ object DBConnector {
         return true
     }
 
-    @Synchronized fun playerTextWS(puzzleID: String, playerID: String): String? = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
-        .readLines().map { PlayerInfo.parse(JsonObject(it)) }.firstOrNull { it.playerID == playerID }?.textSocketHandlerID
+    @Synchronized fun playerWS(puzzleID: String, playerID: String): String? = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
+        .readLines().map { PlayerInfo.parse(JsonObject(it)) }.firstOrNull { it.playerID == playerID }?.socketHandlerID
 
-    @Synchronized fun playerBinaryWS(puzzleID: String, playerID: String): String? = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
-        .readLines().map { PlayerInfo.parse(JsonObject(it)) }.firstOrNull { it.playerID == playerID }?.binarySocketHandlerID
-
-    @Synchronized fun playersWS(puzzleID: String): List<String> = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).readLines()
-            .map { PlayerInfo.parse(JsonObject(it)) }.mapNotNull { it.binarySocketHandlerID ?: it.textSocketHandlerID }
+    @Synchronized fun playersWS(puzzleID: String): List<String> = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
+            .readLines().map { PlayerInfo.parse(JsonObject(it)) }.mapNotNull { it.socketHandlerID }
 }
