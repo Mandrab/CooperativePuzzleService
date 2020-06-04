@@ -8,7 +8,10 @@ import io.vertx.ext.web.client.WebClient
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -17,37 +20,34 @@ class TestService {
     private val client = WebClient.create(vertx)
 
     @Test fun test() {
-        var visited = true
+        val result = ResultLock(0, 6)
 
         createPuzzle().onSuccess { puzzleID ->
+            result.set { result.result +1 }
             getPuzzlesIDs()
             getPuzzleInfo(puzzleID)
             val tilesFuture = getPuzzleTiles(puzzleID).onSuccess { tileID ->
+                result.set { result.result +1 }
                 getPuzzleTile(puzzleID, tileID.first())
             }.onFailure { fail() }
             joinWithUser(puzzleID).onSuccess { player ->
+                result.set { result.result +1 }
                 tilesFuture.onSuccess { tiles ->
+                    result.set { result.result +1 }
                     updatePuzzleTile(puzzleID, tiles.first(), player)
                 }
                 getMousePosition(puzzleID, 0).onSuccess {
+                    result.set { result.result +1 }
                     putMousePosition(puzzleID, player).onSuccess {
+                        result.set { result.result +1 }
                         getMousePosition(puzzleID, 1)
                     }.onFailure { fail() }
                 }.onFailure { fail() }
-
             }.onFailure { fail() }
-
-
-            /*testGetPuzzleToJoin().onSuccess {
-                testLoginToPuzzle(it)
-                testGetTilesInfo(it)
-
-                visited = true
-            }.onFailure { fail() }*/
         }.onFailure { fail() }
 
-        Thread.sleep(2000)
-        assert(visited) { "All the callback should have been called" }
+        result.deadline(2000)
+        assertEquals(6, result.result, "All the callback should have been called")
     }
 
     /**
@@ -312,5 +312,24 @@ class TestService {
     @Before fun startService() {
         val ready = Vertx.vertx().deployVerticle(Gateway())
         while (!ready.isComplete) Thread.sleep(100) // TODO
+    }
+}
+
+class ResultLock<T: Any>(alternativeResult: T, private val waitResult: T? = null): ReentrantLock() {
+    private var completed: Boolean = false
+    private val lock = newCondition()
+    var result: T = alternativeResult
+
+    fun deadline(maxMillis: Int) = withLock {
+        if (!completed) lock.await(maxMillis.toLong(), TimeUnit.MILLISECONDS)
+        completed = true
+    }
+
+    fun set(action: () -> T) = withLock {
+        result = action()
+        if (!completed && result == waitResult) {
+            completed = true
+            lock.signalAll()
+        }
     }
 }
