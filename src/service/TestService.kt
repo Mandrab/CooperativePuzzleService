@@ -3,19 +3,16 @@ package service
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
-import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class TestService {
-    private val playerID = "Marcantonio"
-
     private val vertx = Vertx.vertx()
     private val client = WebClient.create(vertx)
 
@@ -32,7 +29,13 @@ class TestService {
                 tilesFuture.onSuccess { tiles ->
                     updatePuzzleTile(puzzleID, tiles.first(), player)
                 }
-            }
+                getMousePosition(puzzleID, 0).onSuccess {
+                    putMousePosition(puzzleID, player).onSuccess {
+                        getMousePosition(puzzleID, 1)
+                    }.onFailure { fail() }
+                }.onFailure { fail() }
+
+            }.onFailure { fail() }
 
 
             /*testGetPuzzleToJoin().onSuccess {
@@ -172,6 +175,7 @@ class TestService {
      * Test join to a game
      */
     private fun joinWithUser(puzzleID: String): Future<String> {
+        val playerID = "Marcantonio"
         val result = Promise.promise<String>()
 
         client.post(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/user").sendJson(
@@ -189,6 +193,55 @@ class TestService {
         }
         return result.future()
     }
+
+    /**
+     * Test mouse pointer post
+     */
+    private fun putMousePosition(puzzleID: String, playerID: String): Future<Boolean> {
+        val result = Promise.promise<Boolean>()
+
+        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/mouses").sendJsonObject(
+            JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
+        ) {
+            assertEquals(404, it.result().statusCode())
+        }
+        val notExpectedCode = AtomicInteger()
+        for (i in 0..1) {
+            client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").sendJsonObject(
+                JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
+            ) {
+                synchronized(notExpectedCode) {
+                    val code = it.result().statusCode()
+
+                    if (code == 201 && notExpectedCode.get() != 201) {
+                        notExpectedCode.set(201)
+                    } else if (code == 200 && notExpectedCode.get() != 200) {
+                        notExpectedCode.set(200)
+                        result.complete(true)
+                    } else fail()
+                }
+            }
+        }
+        return result.future()
+    }
+
+    /**
+     * Test mouse pointer get
+     */
+    private fun getMousePosition(puzzleID: String, expectedResult: Int): Future<Boolean> {
+        val result = Promise.promise<Boolean>()
+
+        client.get(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/mouses").send {
+            assertEquals(404, it.result().statusCode())
+        }
+        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").send {
+            assertEquals(200, it.result().statusCode())
+            result.complete(true)
+            assertEquals(expectedResult, it.result().bodyAsJsonArray().size())
+        }
+        return result.future()
+    }
+
 /*
     private fun testGetTilesInfo(puzzleID: String): Future<List<Tile>> {
         val result = Promise.promise<List<Tile>>()
