@@ -19,6 +19,10 @@ servers:
 tags:
   - name: puzzle
     description: Join cooperative puzzle to play
+  - name: user
+    description: Register players to allow them to take part to cooperative puzzles
+  - name: mouse
+    description: Share mouse position in game window to add flavour to the game
 
 paths:
 
@@ -111,33 +115,6 @@ paths:
           description: Puzzle not found
 
   '/puzzle/{puzzleID}/{tileID}':
-    get:
-      operationId: getPuzzleTile
-      tags:
-        - puzzle
-      summary: Get information about a puzzle's tile
-      parameters:
-        - in: path
-          name: puzzleID
-          required: true
-          description: ID of the puzzle of which tile belongs to
-          schema:
-            type: string
-        - in: path
-          name: tileID
-          required: true
-          description: ID of the tile of which take information
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Return an object containing tile ID and current position
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MatrixPosition'
-        '404':
-          description: Puzzle or tile not found
     put:
       operationId: updatePuzzleTile
       tags:
@@ -186,12 +163,39 @@ paths:
           description: Puzzle or tile not found
         '409':
           description: Illegal position
+    get:
+      operationId: getPuzzleTile
+      tags:
+        - puzzle
+      summary: Get information about a puzzle's tile
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which tile belongs to
+          schema:
+            type: string
+        - in: path
+          name: tileID
+          required: true
+          description: ID of the tile of which take information
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Return an object containing tile ID and current position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatrixPosition'
+        '404':
+          description: Puzzle or tile not found
 
   '/puzzle/{puzzleID}/user':
     post:
       operationId: joinUser
       tags:
-        - puzzle
+        - user
       summary: Make a user join the game session
       parameters:
         - in: path
@@ -211,6 +215,75 @@ paths:
                   playerToken:
                     type: string
                     description: Represents the player inside the game
+        '404':
+          description: Puzzle not found
+  
+  '/puzzle/{puzzleID}/mouses':
+    put:
+      operationId: updatePlayerPosition
+      tags:
+        - mouse
+      summary: Update the position of a player
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which update the position
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerToken:
+                  type: string
+                position:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    y:
+                      type: integer
+      responses:
+        '200':
+          description: Position created
+        '201':
+          description: Position updated successfully
+        '404':
+          description: Puzzle or player not found
+    get:
+      operationId: getPlayersPositions
+      tags:
+        - mouse
+      summary: Get last mouse position of players in game window
+      parameters:
+        - in: path
+          name: puzzleID
+          required: true
+          description: ID of the puzzle of which get positions
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Return a collection of positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    playerID:
+                      type: string
+                    position:
+                      type: object
+                      properties:
+                        x:
+                          type: integer
+                        y:
+                          type: integer
         '404':
           description: Puzzle not found
 
