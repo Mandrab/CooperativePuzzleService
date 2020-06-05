@@ -4,16 +4,11 @@ import client.view.View
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpClient
 import io.vertx.core.http.WebSocket
-import io.vertx.core.json.Json
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import service.TestService
 import src.puzzle.PuzzleBoard
 import src.puzzle.Tile
 import java.awt.Point
-import java.util.concurrent.CompletableFuture
-import kotlin.random.Random
 
 
 class Client(val name: String, private val port: Int) : AbstractVerticle() {

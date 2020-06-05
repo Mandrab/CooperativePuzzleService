@@ -8,6 +8,7 @@ import java.awt.event.ActionEvent
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.IOException
+import java.net.URL
 import java.util.*
 import java.util.stream.IntStream
 import javax.imageio.ImageIO
@@ -62,7 +63,7 @@ class PuzzleBoard(val rows:Int, val columns: Int, val imagePath:String, val clie
         randomPositions.shuffle()
 
         var position = 0
-        tileList.forEach{tiles.toMutableList().add(Tile("", it.getString("tileID"), Pair(it.getInteger("column"),
+        tileList.forEach{tiles.toMutableList().add(Tile(ImageIO.read(URL(it.getString("imageURL"))), it.getString("tileID"), Pair(it.getInteger("column"),
                 it.getInteger("row")),Pair(randomPositions.get(position), randomPositions.get(position++)))); position++}
 }
 

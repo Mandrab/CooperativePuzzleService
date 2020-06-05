@@ -1,9 +1,12 @@
 asyncapi: 2.0.0
 info:
-  title: Cooperative Puzzle - Websocket API
+  title: Collaborative Puzzle Game - WebSocket API
   version: '1.0'
   description: >-
     These WebSocket API allows to add flavour function playing the cooperative puzzle game. These are not essential to develop a working client for the game, but allow a smarter use of game functions.
+  license:
+    name: GPL-2.0
+    url: 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.html'
 
 servers:
   default:
@@ -17,31 +20,48 @@ servers:
     protocol: ws
 
 channels:
-  /puzzle/{id}/user:
+  /puzzle/{puzzleID}/user:
+    parameters:
+      puzzleID:
+        description: ID of the puzzle on which push mouse positions
+        schema:
+          type: string
     publish:
       message:
-        $ref: '#/components/messages/movement'
+        summary: Represent movement of a player pointer.
+        payload:
+          type: object
+          properties:
+            playerToken:
+              type: string
+              description: Player token given by puzzle service at subscription
+            position:
+              type: object
+              properties:
+                x:
+                  type: integer
+                y:
+                  type: integer
+              description: 2 dimensional position in the game-window
+          description: Position of player pointer. It contains player\'s token and 2D position.
     subscribe:
       message:
-        $ref: '#/components/messages/movement'
-
-components:
-
-  messages:
-    movement:
-      summary: Represent movement of a player pointer.
-      payload:
-        type: object
-        properties:
-          player:
-            type: string
-            description: player name.
-          position:
+        summary: Represent movement of a player pointer.
+        payload:
+          type: array
+          items:
             type: object
             properties:
-              x:
-                type: integer
-              y:
-                type: integer
-            description: 2 dimensional position in the game-window.
-        description: new position of player pointer. It contains player\'s ID and 2D position.
+              playerID:
+                type: string
+                description: Player identifier
+              position:
+                type: object
+                properties:
+                  x:
+                    type: integer
+                  y:
+                    type: integer
+                description: 2 dimensional position in the game-window
+            description: Player's ID and 2D position
+          description: Positions of players pointers
