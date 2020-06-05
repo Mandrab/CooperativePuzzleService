@@ -2,6 +2,7 @@ package client.puzzle
 
 import java.awt.Image
 
+
 data class Tile(val image: Image, val tileID: String, var currentPosition: Pair<Int, Int>) : Comparable<Tile> {
 
     override fun compareTo(other: Tile): Int {

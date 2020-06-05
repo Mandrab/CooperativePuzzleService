@@ -1,31 +1,21 @@
 package client.puzzle
 
 import client.Client
-import io.vertx.core.json.JsonObject
 import java.awt.*
-import java.awt.image.BufferedImage
-import java.net.URL
-import javax.imageio.ImageIO
 import javax.swing.*
 
 
-class PuzzleBoard(
-    private val rows: Int,
-    private val columns: Int,
-    private val client: Client,
-    tiles: List<JsonObject>
-) : JFrame() {
+class PuzzleBoard(rows: Int, columns: Int, private val client: Client) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
-    private val board = JPanel()
+    private var started = false
 
-    private var tiles = emptyList<Tile>()
+    var tiles: List<Tile>? = null
+        set(value) { field = value; if (started) paintPuzzle() }
 
     init {
         title = "Puzzle"
 
-        layout = GridBagLayout()
-        val gbc = GridBagConstraints()
-        gbc.fill = GridBagConstraints.BOTH
+        layout = GridLayout (rows, columns, 0, 0)
         /*add(JTextField("Players Name:").apply { isEditable = false }, gbc)
 
         gbc.gridx = 1
@@ -34,29 +24,15 @@ class PuzzleBoard(
         add(playerName, gbc)
         gbc.gridy = 1*/
 
-        tiles.forEach { tile ->
-            client.vertx.createHttpClient().get(9000, "localhost", "/${tile.getString("imageURL")}").onComplete {
-                it.result().body().onComplete {
-                    this.tiles = this.tiles.toMutableList().apply { add( Tile(
-                        ImageIcon(it.result().bytes).image,
-                        tile.getString("tileID"),
-                        Pair(tile.getInteger("column"), tile.getInteger("row"))
-                    ) ) }
-                    if (this.tiles.size == rows * columns) paintPuzzle()
-                }
-            }
-        }
-
         add(JButton("Start game").apply { addActionListener {
-            //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
-            board.border = BorderFactory.createLineBorder(Color.gray)
-            board.layout = GridLayout (rows, columns, 0, 0)
-            this@PuzzleBoard.add(board, gbc)
+            this@PuzzleBoard.remove(this)
 
-            client.playGame()
-            isEnabled = false
-            isVisible = false
-        } }, gbc)
+            started = true
+            tiles?.let { paintPuzzle() }
+
+            //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
+            client.joinGame()
+        } })
 
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
         isResizable = false
@@ -64,26 +40,23 @@ class PuzzleBoard(
         pack()
     }
 
-    fun updateTiles(tileList: List<JsonObject>) {
-        val tileData = tileList.map {
-            object {
-                val id = it.getString("tileID")
-                val position = Pair(it.getInteger("column"), it.getInteger("row"))
-            }
-        }.map { tile -> Pair(tile, tiles.firstOrNull { it.tileID == tile.id }) }.filterNot { it.second == null }
+    fun updateTiles(tilePositions: Map<String, Pair<Int,Int>>) {
+        tiles ?: return
 
-        if (tileData.any { it.first.position != it.second?.currentPosition } && tileData.size == rows * columns) {
-            tiles = tileData.map { pair -> Tile(pair.second!!.image, pair.second!!.tileID, pair.first.position ) }
+        val diffs = tilePositions.filter { tiles?.first { tile -> tile.tileID == it.key }?.currentPosition != it.value }
+
+        if (diffs.isNotEmpty()) {
+            tiles = tiles?.map { tile -> diffs[tile.tileID]?.let { Tile(tile.image, tile.tileID, it) } ?: tile }
             paintPuzzle()
         }
     }
 
     private fun paintPuzzle() {
-        board.removeAll()
+        contentPane.removeAll()
 
-        tiles.sorted().forEach { tile ->
+        tiles?.sorted()?.forEach { tile ->
             val button = TileButton(tile)
-            board.add(button)
+            contentPane.add(button)
             button.border = BorderFactory.createLineBorder(Color.gray)
             button.addActionListener { selectionManager.selectTile(tile, client) }
         }
