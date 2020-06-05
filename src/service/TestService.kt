@@ -16,6 +16,7 @@ class TestService {
         testGetPuzzleToJoin().thenAccept {
             testLoginToPuzzle(it)
             testGetTilesInfo(it)
+            testUpdatePosition(it, "14", 0,2)
         }
 
         Thread.sleep(2000)
@@ -39,7 +40,7 @@ class TestService {
     }
 
     private fun testLoginToPuzzle(puzzleID: String) {
-        val params = JsonObject().put("playerID", puzzleID)
+        val params = JsonObject().put("playerID", "PlayerZero")
 
         client.post(port, "localhost", "/puzzle/$puzzleID/user").sendJson(params) {
             if (it.succeeded()) {
@@ -104,9 +105,9 @@ class TestService {
         }
     }
 
-    private fun testUpdatePosition(puzzleID: String, tileID: String, newPosition: Pair<Int, Int>, currentPosition: Pair<Int, Int>){
-        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tileID).put("x", newPosition.first).put("y", newPosition.second)
-        client.get(port, "localhost", "/puzzle/$puzzleID/$tileID").sendJson(params) {
+    private fun testUpdatePosition(puzzleID: String, tileID: String, x : Int, y:Int){
+        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tileID).put("x", x).put("y", y)
+        client.put(port, "localhost", "/puzzle/$puzzleID/$tileID").sendJson(params) {
             if (it.succeeded()) {
                 val response = it.result()
                 val code = response.statusCode()

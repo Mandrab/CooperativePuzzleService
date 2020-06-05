@@ -90,6 +90,8 @@ class Gateway(private val localPort: Int) : AbstractVerticle() {
             val newPosX = ctx.request().getParam("x").toInt()
             val newPosY = ctx.request().getParam("y").toInt()
             val update = DBConnector.updateTilePosition(puzzleID, tiles, newPosX, newPosY)
+            val returns = JsonArray()
+            returns.add(update)
             response.statusCode = 200
         } catch (e: Exception) {
             response.statusCode = 404

@@ -1,6 +1,7 @@
 import client.Client
 import io.vertx.core.Vertx
 import service.Gateway
+import src.puzzle.PuzzleBoard
 
 private const val PORT = 40426
 

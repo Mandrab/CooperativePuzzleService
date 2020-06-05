@@ -30,7 +30,7 @@ object DBConnector {
         File(puzzleID + PLAYERS_SUFFIX).appendText(playerID)
     }
 
-    fun updateTilePosition(puzzleID: String, tileID: String, newPosX: Int, newPosY: Int) {
+    fun updateTilePosition(puzzleID: String, tileID: String, newPosX: Int, newPosY: Int){
         if(File(puzzleID + TILES_SUFFIX).exists()){
             val tile = File(puzzleID + TILES_SUFFIX).readLines().first { it.substringBefore(";") == tileID }
             val tileUpd = File(puzzleID + TILES_SUFFIX).readLines().first { it.substringAfterLast(";") == "$newPosX $newPosY" }
