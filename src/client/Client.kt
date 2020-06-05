@@ -9,6 +9,8 @@ import io.vertx.ext.web.client.WebClient
 import src.puzzle.PuzzleBoard
 import src.puzzle.Tile
 import java.awt.Point
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 
 class Client(val name: String, private val port: Int) : AbstractVerticle() {
@@ -94,6 +96,7 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
                 playerToken = body.getString("playerToken")
+                getPuzzleTiles()
                 println("Response: $body")
             } else {
                 println("Something went wrong ${it.cause().message}")
@@ -102,21 +105,23 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
     }
 
 
-    fun getPuzzleTiles() : List<JsonObject> {
+    fun getPuzzleTiles() {
         val result = mutableListOf<JsonObject>()
-        val params = JsonObject().put("puzzleID", puzzleID)
+        vertx.setPeriodic(5000){
+            val params = JsonObject().put("puzzleID", puzzleID)
 
-        webClient.get(port, "localhost", "/puzzle/$puzzleID/tiles").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code ${response.body()}")
-                result.add(response.bodyAsJsonObject())
-            } else {
-                println("Something went wrong ${it.cause().message}")
+            webClient.get(port, "localhost", "/puzzle/$puzzleID/tiles").sendJson(params) {
+                if (it.succeeded()) {
+                    val response = it.result()
+                    val code = response.statusCode()
+                    println("Status code: $code ${response.body()}")
+                    result.add(response.bodyAsJsonObject())
+                    puzzle.createTiles(result)
+                } else {
+                    println("Something went wrong ${it.cause().message}")
+                }
             }
         }
-        return result
     }
 
 

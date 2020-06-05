@@ -47,25 +47,19 @@ class PuzzleBoard(val rows:Int, val columns: Int, val imagePath:String, val clie
             client.playGame()
             startButton.isEnabled = false
             startButton.isVisible = false
-            createTiles()
-            paintPuzzle(board)
         } }, gbc)
 
         isVisible = true
         pack()
     }
 
-    private fun createTiles() {
+    fun createTiles(tileList: List<JsonObject>) {
 
-        val tileList = client.getPuzzleTiles()
-        val randomPositions: MutableList<Int> = ArrayList()
-        IntStream.range(0, rows * columns).forEach { item: Int -> randomPositions.add(item) }
-        randomPositions.shuffle()
-
-        var position = 0
         tileList.forEach{tiles.toMutableList().add(Tile(ImageIO.read(URL(it.getString("imageURL"))), it.getString("tileID"), Pair(it.getInteger("column"),
-                it.getInteger("row")),Pair(randomPositions.get(position), randomPositions.get(position++)))); position++}
-}
+                it.getInteger("row"))))}
+
+        paintPuzzle(board)
+    }
 
     private fun paintPuzzle(board: JPanel){
         board.removeAll()
@@ -93,7 +87,7 @@ class PuzzleBoard(val rows:Int, val columns: Int, val imagePath:String, val clie
     }
 
     private fun checkSolution() {
-        if(tiles.stream().allMatch(Tile::isInRightPlace))
+        //TODO
             JOptionPane.showMessageDialog(this, "Puzzle Completed!", "", JOptionPane.INFORMATION_MESSAGE)
     }
 
