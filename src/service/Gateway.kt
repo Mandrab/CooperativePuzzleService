@@ -2,14 +2,11 @@ package service
 
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
-import io.vertx.core.http.ServerWebSocket
-import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
-import service.db.DBConnector
 
 
-class Gateway(val ready: Promise<Void> = Promise.promise()) : AbstractVerticle() {
+class Gateway(private val ready: Promise<Void> = Promise.promise()) : AbstractVerticle() {
 
     override fun start() {
         val router: Router = Router.router(vertx)
@@ -17,17 +14,17 @@ class Gateway(val ready: Promise<Void> = Promise.promise()) : AbstractVerticle()
         router.apply {
             route().handler(BodyHandler.create())
 
-            post("/puzzle").handler { RESTful.newPuzzle(it) }
-            post("/puzzle/:puzzleID/user").handler { RESTful.newPlayer(it) }
+            post("/client/puzzle").handler { RESTful.newPuzzle(it) }
+            post("/client/puzzle/:puzzleID/user").handler { RESTful.newPlayer(it) }
 
-            get("/puzzle").handler { RESTful.availablePuzzles(it) }
-            get("/puzzle/:puzzleID").handler { RESTful.puzzleInfo(it) }
-            get("/puzzle/:puzzleID/mouses").handler { RESTful.getPositions(it) }
-            get("/puzzle/:puzzleID/tiles").handler { RESTful.getTiles(it) }
-            get("/puzzle/:puzzleID/:tileID").handler { RESTful.getTile(it) }
+            get("/client/puzzle").handler { RESTful.availablePuzzles(it) }
+            get("/client/puzzle/:puzzleID").handler { RESTful.puzzleInfo(it) }
+            get("/client/puzzle/:puzzleID/mouses").handler { RESTful.getPositions(it) }
+            get("/client/puzzle/:puzzleID/tiles").handler { RESTful.getTiles(it) }
+            get("/client/puzzle/:puzzleID/:tileID").handler { RESTful.getTile(it) }
 
-            put("/puzzle/:puzzleID/mouses").handler { RESTful.positionSubmission(it) }
-            put("/puzzle/:puzzleID/:tileID").handler{ RESTful.updateTilePosition(it) }
+            put("/client/puzzle/:puzzleID/mouses").handler { RESTful.positionSubmission(it) }
+            put("/client/puzzle/:puzzleID/:tileID").handler{ RESTful.updateTilePosition(it) }
         }
 
         vertx.createHttpServer()

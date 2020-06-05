@@ -1,4 +1,4 @@
-package src.puzzle
+package client.puzzle
 
 import java.awt.Color
 import java.awt.event.MouseAdapter

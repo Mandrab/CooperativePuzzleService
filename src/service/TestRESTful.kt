@@ -52,12 +52,12 @@ class TestRESTful {
     }
 
     /**
-     * Test creation of a new puzzle
+     * Test creation of a new client.puzzle
      */
     private fun createPuzzle(): Future<String> {
         val returns = Promise.promise<String>()
 
-        client.post(Gateway.PORT, "localhost", "/puzzle").send {
+        client.post(Gateway.PORT, "localhost", "/client/puzzle").send {
             assert(it.succeeded())
 
             val body = it.result().bodyAsJsonObject()
@@ -76,17 +76,17 @@ class TestRESTful {
      * Test get of puzzles IDs
      */
     private fun getPuzzlesIDs() {
-        client.get(Gateway.PORT, "localhost", "/puzzle").send {
+        client.get(Gateway.PORT, "localhost", "/client/puzzle").send {
             assert(it.succeeded())
             assertFalse(it.result().bodyAsJsonArray().isEmpty)
         }
     }
 
     /**
-     * Test obtainment of puzzle info
+     * Test obtainment of client.puzzle info
      */
     private fun getPuzzleInfo(puzzleID: String) {
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID").send {
+        client.get(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID").send {
             assert(it.succeeded())
 
             val body = it.result().bodyAsJsonObject()
@@ -108,12 +108,12 @@ class TestRESTful {
     }
 
     /**
-     * Test get of puzzle tiles
+     * Test get of client.puzzle tiles
      */
     private fun getPuzzleTiles(puzzleID: String): Future<List<String>> {
         val result = Promise.promise<List<String>>()
 
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/tiles").send {
+        client.get(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/tiles").send {
             assert(it.succeeded())
 
             val jArray = it.result().bodyAsJsonArray().map { t -> t as JsonObject }
@@ -128,10 +128,10 @@ class TestRESTful {
     }
 
     /**
-     * Test get of a puzzle tile
+     * Test get of a client.puzzle tile
      */
     private fun getPuzzleTile(puzzleID: String, tileID: String) {
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").send {
+        client.get(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/$tileID").send {
             assert(it.succeeded())
 
             val jObject = it.result().bodyAsJsonObject()
@@ -143,28 +143,28 @@ class TestRESTful {
     }
 
     /**
-     * Test update of a puzzle tile
+     * Test update of a client.puzzle tile
      */
     private fun updatePuzzleTile(puzzleID: String, tileID: String, playerID: String) {
-        client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").sendJsonObject(
+        client.put(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/$tileID").sendJsonObject(
             JsonObject().put("playerToken", playerID).put("newColumn", 3).put("newRow", 2)
         ) {
             assert(it.succeeded())
             assertEquals(200, it.result().statusCode())
         }
-        client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/$tileID").sendJsonObject(
+        client.put(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/$tileID").sendJsonObject(
             JsonObject().put("playerToken", "${playerID}a").put("newColumn", 3).put("newRow", 2)
         ) {
             assert(it.succeeded())
             assertEquals(401, it.result().statusCode())
         }
-        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/${tileID}a").sendJsonObject(
+        client.put(Gateway.PORT, "localhost", "/client.puzzle/${puzzleID}a/${tileID}a").sendJsonObject(
             JsonObject().put("playerToken", playerID).put("newColumn", 3).put("newRow", 2)
         ) {
             assert(it.succeeded())
             assertEquals(404, it.result().statusCode())
         }
-        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}/${tileID}").sendJsonObject(
+        client.put(Gateway.PORT, "localhost", "/client.puzzle/${puzzleID}/${tileID}").sendJsonObject(
             JsonObject().put("playerToken", playerID).put("newColumn", Int.MIN_VALUE).put("newRow", Int.MIN_VALUE)
         ) {
             assert(it.succeeded())
@@ -179,12 +179,12 @@ class TestRESTful {
         val playerID = "Marcantonio"
         val result = Promise.promise<String>()
 
-        client.post(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/user").sendJson(
+        client.post(Gateway.PORT, "localhost", "/client.puzzle/${puzzleID}a/user").sendJson(
             JsonObject().put("playerID", playerID)
         ) {
             assertEquals(404, it.result().statusCode())
         }
-        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").sendJson(
+        client.post(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/user").sendJson(
             JsonObject().put("playerID", playerID)
         ) {
             assertEquals(201, it.result().statusCode())
@@ -201,14 +201,14 @@ class TestRESTful {
     private fun putMousePosition(puzzleID: String, playerID: String): Future<Boolean> {
         val result = Promise.promise<Boolean>()
 
-        client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/mouses").sendJsonObject(
+        client.put(Gateway.PORT, "localhost", "/client.puzzle/${puzzleID}a/mouses").sendJsonObject(
             JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
         ) {
             assertEquals(404, it.result().statusCode())
         }
         val notExpectedCode = AtomicInteger()
         for (i in 0..1) {
-            client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").sendJsonObject(
+            client.put(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/mouses").sendJsonObject(
                 JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
             ) {
                 synchronized(notExpectedCode) {
@@ -232,10 +232,10 @@ class TestRESTful {
     private fun getMousePosition(puzzleID: String, expectedResult: Int): Future<Boolean> {
         val result = Promise.promise<Boolean>()
 
-        client.get(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/mouses").send {
+        client.get(Gateway.PORT, "localhost", "/client.puzzle/${puzzleID}a/mouses").send {
             assertEquals(404, it.result().statusCode())
         }
-        client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").send {
+        client.get(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/mouses").send {
             assertEquals(200, it.result().statusCode())
             result.complete(true)
             assertEquals(expectedResult, it.result().bodyAsJsonArray().size())

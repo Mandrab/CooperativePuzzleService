@@ -34,7 +34,7 @@ class TestWebSocket {
         val result = Promise.promise<Boolean>()
 
         val client: HttpClient = vertx.createHttpClient()
-        val path = "/puzzle/${puzzleID}/mouses"
+        val path = "/client.puzzle/${puzzleID}/mouses"
 
         client.webSocket(Gateway.PORT, "localhost", path) {
             val msg = JsonObject().put("playerToken", playerID).put("position", JsonObject().put("x", 50).put("y", 60))
@@ -52,7 +52,7 @@ class TestWebSocket {
     private fun createPuzzle(): Future<String> {
         val returns = Promise.promise<String>()
 
-        client.post(Gateway.PORT, "localhost", "/puzzle").send {
+        client.post(Gateway.PORT, "localhost", "/client/puzzle").send {
             val body = it.result().bodyAsJsonObject()
             returns.complete(body.getString("puzzleID"))
         }
@@ -63,7 +63,7 @@ class TestWebSocket {
         val playerID = "Marcantonio"
         val result = Promise.promise<String>()
 
-        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").sendJson(
+        client.post(Gateway.PORT, "localhost", "/client.puzzle/$puzzleID/user").sendJson(
             JsonObject().put("playerID", playerID)
         ) { result.complete(it.result().bodyAsJsonObject().getString("playerToken")) }
         return result.future()

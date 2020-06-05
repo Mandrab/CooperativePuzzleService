@@ -129,7 +129,7 @@ object RESTful {
         val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID)!!
         val newColumn = ctx.bodyAsJson.getInteger("newColumn")
         val newRow = ctx.bodyAsJson.getInteger("newRow")
-        if (newColumn < 0 || newColumn > puzzleInfo.columnsCount || newRow < 0 || newRow > puzzleInfo.rowsCount) {
+        if (newColumn < 0 || newColumn > puzzleInfo.columnsCount -1 || newRow < 0 || newRow > puzzleInfo.rowsCount -1) {
             ctx.response().apply { statusCode = 409 }.end()
             return
         }

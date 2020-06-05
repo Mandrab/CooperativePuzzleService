@@ -9,7 +9,7 @@ object WebSocket {
 
     internal fun webSocketHandler(ws: ServerWebSocket, vertx: Vertx) {
         when (ws.path()) {
-            in Regex("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> mouseHandler(ws, vertx)
+            in Regex("/client.puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> mouseHandler(ws, vertx)
             else -> {
                 println("Socket connection attempt rejected")
                 ws.reject()
@@ -26,7 +26,7 @@ object WebSocket {
             val position = jObject.getJsonObject("position")
             if (listOf("x", "y") !in position) return@binaryMessageHandler
 
-            val puzzleID = ws.path().removeSurrounding("/puzzle/", "/mouses")
+            val puzzleID = ws.path().removeSurrounding("/client/puzzle/", "/mouses")
             if (puzzleID !in DBConnector.getPuzzlesIDs()) return@binaryMessageHandler
 
             val playerToken = jObject.getString("playerToken")

@@ -1,7 +1,6 @@
 import client.Client
 import io.vertx.core.Vertx
 import service.Gateway
-import src.puzzle.PuzzleBoard
 
 fun main() {
     val vertx = Vertx.vertx()

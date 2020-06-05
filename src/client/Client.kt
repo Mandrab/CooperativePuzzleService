@@ -6,12 +6,13 @@ import io.vertx.core.http.HttpClient
 import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import src.puzzle.PuzzleBoard
-import src.puzzle.Tile
+import client.puzzle.PuzzleBoard
+import client.puzzle.Tile
+import io.vertx.core.json.Json
 import java.awt.Point
 
 
-class Client(val name: String, private val port: Int) : AbstractVerticle() {
+class Client(private val name: String, private val port: Int) : AbstractVerticle() {
     private val view = View(this)
 
     private val webClient: WebClient by lazy { WebClient.create(vertx) }
@@ -24,7 +25,7 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
     override fun start() = joinPuzzle()
 
     private fun joinPuzzle() {
-        webClient.post(port, "localhost", "/puzzle").send {
+        webClient.post(port, "localhost", "/client/puzzle").send {
             if (it.succeeded()) {
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
@@ -45,18 +46,20 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
                 println("Response: $body")
-                puzzle = PuzzleBoard(body.getString("columns").toInt(), body.getString("rows").toInt(), body.getString("imageURL"), this) //to create puzzle
+                puzzle = PuzzleBoard(
+                    body.getInteger("rows"),
+                    body.getInteger("columns"),
+                    this
+                ) //to create client.puzzle
                 puzzle.isVisible = true
 
                 openWS(puzzleID)
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
+            } else println("Something went wrong ${it.cause().message}")
         }
     }
 
-        private fun openWS(puzzleID: String) {
-        httpClient.webSocket(port, "localhost", "/puzzle/$puzzleID/user") {
+    private fun openWS(puzzleID: String) {
+        httpClient.webSocket(port, "localhost", "/client.puzzle/$puzzleID/user") {
             it.result()?.also { ws ->
                 webSocket = ws
 
@@ -89,7 +92,7 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
     fun playGame() {
         val params = JsonObject().put("puzzleID", puzzleID)
 
-        webClient.post(port, "localhost", "/puzzle/$puzzleID/user").sendJson(params) {
+        webClient.post(port, "localhost", "/client.puzzle/$puzzleID/user").sendJson(params) {
             if (it.succeeded()) {
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
@@ -106,7 +109,7 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
         val result = mutableListOf<JsonObject>()
         val params = JsonObject().put("puzzleID", puzzleID)
 
-        webClient.get(port, "localhost", "/puzzle/$puzzleID/tiles").sendJson(params) {
+        webClient.get(port, "localhost", "/client.puzzle/$puzzleID/tiles").sendJson(params) {
             if (it.succeeded()) {
                 val response = it.result()
                 val code = response.statusCode()
@@ -123,7 +126,7 @@ class Client(val name: String, private val port: Int) : AbstractVerticle() {
     fun updateTilePosition(tile : Tile, newPosX: Int, newPosY: Int){
         val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tile.tileID).put("palyerToken", playerToken).put("x", newPosX).put("y", newPosY)
 
-        webClient.put(port, "localhost", "/puzzle/$puzzleID/${tile.tileID}").sendJson(params) {
+        webClient.put(port, "localhost", "/client.puzzle/$puzzleID/${tile.tileID}").sendJson(params) {
             if (it.succeeded()) {
                 val response = it.result()
                 val code = response.statusCode()
