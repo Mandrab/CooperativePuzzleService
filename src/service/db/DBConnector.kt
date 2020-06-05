@@ -2,7 +2,10 @@ package service.db
 
 import io.vertx.core.json.JsonObject
 import java.io.File
+import java.io.IOException
+import javax.imageio.ImageIO
 import kotlin.random.Random
+
 
 /**
  * This class *simulate* a db-connector to store files on a DB.
@@ -23,10 +26,11 @@ object DBConnector {
         if (puzzles != null && puzzles.any { it.puzzleID == puzzleID }) return false
 
         File(PUZZLES_LIST_FILE).appendText(PuzzleInfo(puzzleID, imageURL, colsCount, rowsCount).toJson().encode() + "\n")
+        val tilesPath = genTilesImage(imageURL, puzzleID, colsCount, rowsCount) ?: return false
         File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText((0 until rowsCount).joinToString("\n") { y ->
-            (0 until colsCount).joinToString("\n") { x ->
-                TileInfo("${x + colsCount * y}", Pair(x, y), Pair(x, y)).toJson().encode()
-            }
+            (0 until colsCount).joinToString("\n") { x -> (x + colsCount * y).let {
+                TileInfo("$it", tilesPath[it], Pair(x, y), Pair(x, y)).toJson().encode()
+            } }
         })
         return true
     }
@@ -60,11 +64,13 @@ object DBConnector {
                 when (it.tileID) {
                     swapTile1.tileID -> TileInfo(
                         swapTile1.tileID,
+                        swapTile1.tileImageURL,
                         swapTile1.originalPosition,
                         swapTile2.currentPosition
                     )
                     swapTile2.tileID -> TileInfo(
                         swapTile2.tileID,
+                        swapTile2.tileImageURL,
                         swapTile2.originalPosition,
                         swapTile1.currentPosition
                     )
@@ -117,4 +123,29 @@ object DBConnector {
 
     @Synchronized fun playersWS(puzzleID: String): List<String> = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
             .readLines().map { PlayerInfo.parse(JsonObject(it)) }.mapNotNull { it.socketHandlerID }
+
+    private fun genTilesImage(path: String, puzzleID: String, columns: Int, rows: Int): List<String>? {
+        val image = try { ImageIO.read(File(path)) }
+        catch (ex: IOException) { return null }
+
+        val imageWidth: Int = image.getWidth(null)
+        val imageHeight: Int = image.getHeight(null)
+
+        File(PATH_PREFIX + puzzleID).mkdir()
+        val paths = mutableListOf<String>()
+
+        for (y in 0 until rows) {
+            for (x in 0 until columns) {
+                val imagePortion = image.getSubimage(x * imageWidth / columns,
+                    y * imageHeight / rows,
+                    imageWidth / columns,
+                    imageHeight / rows)
+
+                val tilePath = PATH_PREFIX + puzzleID + File.separator + "tile${x + columns * y}.png"
+                ImageIO.write(imagePortion, "png", File(tilePath))
+                paths.add(tilePath)
+            }
+        }
+        return paths
+    }
 }

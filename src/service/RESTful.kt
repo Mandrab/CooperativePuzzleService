@@ -57,6 +57,7 @@ object RESTful {
             DBConnector.getPuzzleTiles(puzzleID).map {
                 JsonObject().apply {
                     put("tileID", it.tileID)
+                    put("imageURL", it.tileImageURL)
                     put("column", it.currentPosition.first)
                     put("row", it.currentPosition.second)
                 }
@@ -77,6 +78,7 @@ object RESTful {
         DBConnector.getPuzzleTiles(puzzleID).map {
             JsonObject().apply {
                 put("tileID", it.tileID)
+                put("imageURL", it.tileImageURL)
                 put("column", it.currentPosition.first)
                 put("row", it.currentPosition.second)
             }
