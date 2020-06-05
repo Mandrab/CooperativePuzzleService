@@ -3,12 +3,18 @@ package client.puzzle
 import client.Client
 import io.vertx.core.json.JsonObject
 import java.awt.*
+import java.awt.image.BufferedImage
 import java.net.URL
 import javax.imageio.ImageIO
 import javax.swing.*
 
 
-class PuzzleBoard(private val rows: Int, private val columns: Int, private val client: Client) : JFrame() {
+class PuzzleBoard(
+    private val rows: Int,
+    private val columns: Int,
+    private val client: Client,
+    tiles: List<JsonObject>
+) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
     private val board = JPanel()
 
@@ -29,6 +35,18 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         add(playerName, gbc)
         gbc.gridy = 1*/
 
+        tiles.forEach { tile ->
+            client.vertx.createHttpClient().get(9000, "localhost", "/${tile.getString("imageURL")}").onComplete {
+                it.result().body().onComplete {
+                    this.tiles = this.tiles.toMutableList().apply { add( Tile(
+                        ImageIcon(it.result().bytes).image,
+                        tile.getString("tileID"),
+                        Pair(tile.getInteger("column"), tile.getInteger("row"))
+                    ) ) }
+                }
+            }
+        }
+
         add(JButton("Start game").apply { addActionListener {
             //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
             board.border = BorderFactory.createLineBorder(Color.gray)
@@ -47,11 +65,13 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
     }
 
     fun updateTiles(tileList: List<JsonObject>) {
-        tiles = tileList.map {
+        tiles = tiles.map { tile ->
             Tile(
-                ImageIO.read(URL(it.getString("imageURL"))),
-                it.getString("tileID"),
-                Pair(it.getInteger("column"), it.getInteger("row"))
+                tile.image,
+                tile.tileID,
+                tileList.first { it.getString("tileID") == tile.tileID }.let {
+                    Pair(it.getInteger("column"), it.getInteger("row"))
+                }
             )
         }
         paintPuzzle(board)

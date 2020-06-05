@@ -14,17 +14,17 @@ class Gateway(private val ready: Promise<Void> = Promise.promise()) : AbstractVe
         router.apply {
             route().handler(BodyHandler.create())
 
-            post("/client/puzzle").handler { RESTful.newPuzzle(it) }
-            post("/client/puzzle/:puzzleID/user").handler { RESTful.newPlayer(it) }
+            post("/puzzle").handler { RESTful.newPuzzle(it) }
+            post("/puzzle/:puzzleID/user").handler { RESTful.newPlayer(it) }
 
-            get("/client/puzzle").handler { RESTful.availablePuzzles(it) }
-            get("/client/puzzle/:puzzleID").handler { RESTful.puzzleInfo(it) }
-            get("/client/puzzle/:puzzleID/mouses").handler { RESTful.getPositions(it) }
-            get("/client/puzzle/:puzzleID/tiles").handler { RESTful.getTiles(it) }
-            get("/client/puzzle/:puzzleID/:tileID").handler { RESTful.getTile(it) }
+            get("/puzzle").handler { RESTful.availablePuzzles(it) }
+            get("/puzzle/:puzzleID").handler { RESTful.puzzleInfo(it) }
+            get("/puzzle/:puzzleID/mouses").handler { RESTful.getPositions(it) }
+            get("/puzzle/:puzzleID/tiles").handler { RESTful.getTiles(it) }
+            get("/puzzle/:puzzleID/:tileID").handler { RESTful.getTile(it) }
 
-            put("/client/puzzle/:puzzleID/mouses").handler { RESTful.positionSubmission(it) }
-            put("/client/puzzle/:puzzleID/:tileID").handler{ RESTful.updateTilePosition(it) }
+            put("/puzzle/:puzzleID/mouses").handler { RESTful.positionSubmission(it) }
+            put("/puzzle/:puzzleID/:tileID").handler{ RESTful.updateTilePosition(it) }
         }
 
         vertx.createHttpServer()

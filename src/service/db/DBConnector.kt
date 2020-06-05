@@ -16,7 +16,7 @@ import kotlin.random.Random
  * @author Paolo Baldini
  */
 object DBConnector {
-    private val PATH_PREFIX = ".trash${File.separator}"
+    private val PATH_PREFIX = "trash${File.separator}"
     private val PUZZLES_LIST_FILE = "${PATH_PREFIX}puzzles_list"
     private const val PLAYERS_SUFFIX = "_players"
     private const val TILES_SUFFIX = "_tiles"
