@@ -152,11 +152,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Return an object containing tile ID and current position
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MatrixPosition'
+          description: Tile successfully moved
         '401':
           description: Subject trying to update the resource not results as a player of the puzzle
         '404':
@@ -187,7 +183,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MatrixPosition'
+                type: object
+                properties:
+                  imageURL:
+                    type: string
+                  column:
+                    type: integer
+                  row:
+                    type: integer
         '404':
           description: Puzzle or tile not found
 
@@ -246,6 +249,7 @@ paths:
                       type: integer
                     y:
                       type: integer
+                  description: 2 dimensional position in the game-window.
       responses:
         '200':
           description: Position created
@@ -312,6 +316,9 @@ components:
           type: integer
         rows:
           type: integer
+        status:
+          type: string
+          enum: [started, completed]
         tiles:
           type: array
           items:
@@ -322,18 +329,11 @@ components:
       type: object
       properties:
         tileID:
-          type: integer
+          type: string
+        imageURL:
+          type: string
         column:
           type: integer
         row:
           type: integer
       description: An object containing information about a puzzle tile. Specifically it contains ID and actual position (i.e., column and row) of the tile.
-    
-    MatrixPosition:
-      type: object
-      properties:
-        column:
-          type: integer
-        row:
-          type: integer
-      description: An object representing a position in a 2-dimensional matrix.

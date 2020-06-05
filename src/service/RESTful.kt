@@ -53,8 +53,11 @@ object RESTful {
             put("columns", puzzleInfo.columnsCount)
             put("rows", puzzleInfo.rowsCount)
 
+            val tiles = DBConnector.getPuzzleTiles(puzzleID)
+            put("status", if (tiles.all { it.currentPosition == it.originalPosition }) "complete" else "started")
+
             val jArray = JsonArray()
-            DBConnector.getPuzzleTiles(puzzleID).map {
+            tiles.map {
                 JsonObject().apply {
                     put("tileID", it.tileID)
                     put("imageURL", it.tileImageURL)

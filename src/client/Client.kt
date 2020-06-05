@@ -109,17 +109,15 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
         val params = JsonObject().put("puzzleID", puzzleID)
 
         vertx.setPeriodic(5000) {
-            webClient.get(port, "localhost", "/puzzle/$puzzleID/tiles").sendJson(params) {
+            webClient.get(port, "localhost", "/puzzle/$puzzleID").sendJson(params) {
                 if (it.succeeded()) {
-                    val response = it.result()
-                    val code = response.statusCode()
-                    println("Status code: $code ${response.body()}")
-                    puzzle.updateTiles(response.bodyAsJsonArray().map { it as JsonObject })
+                    val body = it.result().bodyAsJsonObject()
+                    body.getString("status")// TODO
+                    puzzle.updateTiles(body.getJsonArray("tiles").map { it as JsonObject })
                 } else println("Something went wrong ${it.cause().message}")
             }
         }
     }
-
 
     fun updateTilePosition(tile : Tile, newPosX: Int, newPosY: Int){
         val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tile.tileID).put("palyerToken", playerToken).put("x", newPosX).put("y", newPosY)

@@ -85,14 +85,7 @@ class PuzzleBoard(
             val button = TileButton(tile)
             board.add(button)
             button.border = BorderFactory.createLineBorder(Color.gray)
-            button.addActionListener {
-                selectionManager.selectTile(tile, object: SelectionManager.Listener {
-                    override fun onSwapPerformed() {
-                        // TODO request to server
-                        checkSolution()
-                    }
-                }, client)
-            }
+            button.addActionListener { selectionManager.selectTile(tile, client) }
         }
         setLocationRelativeTo(null)
         pack()
