@@ -25,7 +25,6 @@ class PuzzleBoard(
 
         layout = GridBagLayout()
         val gbc = GridBagConstraints()
-
         gbc.fill = GridBagConstraints.BOTH
         /*add(JTextField("Players Name:").apply { isEditable = false }, gbc)
 
@@ -43,6 +42,7 @@ class PuzzleBoard(
                         tile.getString("tileID"),
                         Pair(tile.getInteger("column"), tile.getInteger("row"))
                     ) ) }
+                    if (this.tiles.size == rows * columns) paintPuzzle()
                 }
             }
         }
@@ -51,7 +51,7 @@ class PuzzleBoard(
             //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
             board.border = BorderFactory.createLineBorder(Color.gray)
             board.layout = GridLayout (rows, columns, 0, 0)
-            contentPane.add(board, BorderLayout.CENTER)
+            this@PuzzleBoard.add(board, gbc)
 
             client.playGame()
             isEnabled = false
@@ -65,19 +65,20 @@ class PuzzleBoard(
     }
 
     fun updateTiles(tileList: List<JsonObject>) {
-        tiles = tiles.map { tile ->
-            Tile(
-                tile.image,
-                tile.tileID,
-                tileList.first { it.getString("tileID") == tile.tileID }.let {
-                    Pair(it.getInteger("column"), it.getInteger("row"))
-                }
-            )
+        val tileData = tileList.map {
+            object {
+                val id = it.getString("tileID")
+                val position = Pair(it.getInteger("column"), it.getInteger("row"))
+            }
+        }.map { tile -> Pair(tile, tiles.firstOrNull { it.tileID == tile.id }) }.filterNot { it.second == null }
+
+        if (tileData.any { it.first.position != it.second?.currentPosition } && tileData.size == rows * columns) {
+            tiles = tileData.map { pair -> Tile(pair.second!!.image, pair.second!!.tileID, pair.first.position ) }
+            paintPuzzle()
         }
-        paintPuzzle(board)
     }
 
-    private fun paintPuzzle(board: JPanel) {
+    private fun paintPuzzle() {
         board.removeAll()
 
         tiles.sorted().forEach { tile ->
@@ -93,8 +94,8 @@ class PuzzleBoard(
                 }, client)
             }
         }
-        pack()
         setLocationRelativeTo(null)
+        pack()
     }
 
     private fun checkSolution() {

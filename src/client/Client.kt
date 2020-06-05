@@ -48,9 +48,9 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
                 puzzle = PuzzleBoard(
                     body.getInteger("rows"),
                     body.getInteger("columns"),
-                    this
+                    this,
+                    body.getJsonArray("tiles").map { it as JsonObject }
                 )
-                puzzle.updateTiles(body.getJsonArray("tiles").map { it as JsonObject })
                 puzzle.isVisible = true
 
                 openWS(puzzleID)
@@ -106,7 +106,6 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
     }
 
     private fun getPuzzleTiles() {
-        val result = mutableListOf<JsonObject>()
         val params = JsonObject().put("puzzleID", puzzleID)
 
         vertx.setPeriodic(5000) {
@@ -115,7 +114,7 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
                     val response = it.result()
                     val code = response.statusCode()
                     println("Status code: $code ${response.body()}")
-                    result.add(response.bodyAsJsonObject())
+                    puzzle.updateTiles(response.bodyAsJsonArray().map { it as JsonObject })
                 } else println("Something went wrong ${it.cause().message}")
             }
         }
