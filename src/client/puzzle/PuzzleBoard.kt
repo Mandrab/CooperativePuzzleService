@@ -1,20 +1,18 @@
 package client.puzzle
 
 import client.Client
+import io.vertx.core.json.JsonObject
 import java.awt.*
 import java.net.URL
 import javax.imageio.ImageIO
 import javax.swing.*
 
 
-class PuzzleBoard(
-    private val rows: Int,
-    private val columns: Int,
-    private val client: Client,
-    private var tiles: List<Tile>
-) : JFrame() {
+class PuzzleBoard(private val rows: Int, private val columns: Int, private val client: Client) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
     private val board = JPanel()
+
+    private var tiles = emptyList<Tile>()
 
     init {
         title = "Puzzle"
@@ -40,7 +38,6 @@ class PuzzleBoard(
             client.playGame()
             isEnabled = false
             isVisible = false
-            paintPuzzle(board)
         } }, gbc)
 
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
@@ -49,14 +46,15 @@ class PuzzleBoard(
         pack()
     }
 
-    private fun createTiles() {
-        tiles = tiles.toMutableList().add(
+    fun updateTiles(tileList: List<JsonObject>) {
+        tiles = tileList.map {
             Tile(
                 ImageIO.read(URL(it.getString("imageURL"))),
                 it.getString("tileID"),
                 Pair(it.getInteger("column"), it.getInteger("row"))
             )
-        )
+        }
+        paintPuzzle(board)
     }
 
     private fun paintPuzzle(board: JPanel) {
@@ -70,13 +68,11 @@ class PuzzleBoard(
                 selectionManager.selectTile(tile, object: SelectionManager.Listener {
                     override fun onSwapPerformed() {
                         // TODO request to server
-                        paintPuzzle(board)
                         checkSolution()
                     }
                 }, client)
             }
         }
-
         pack()
         setLocationRelativeTo(null)
     }

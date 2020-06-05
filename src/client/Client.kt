@@ -10,6 +10,8 @@ import client.puzzle.PuzzleBoard
 import client.puzzle.Tile
 import io.vertx.core.json.Json
 import java.awt.Point
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 
 class Client(private val name: String, private val port: Int) : AbstractVerticle() {
@@ -50,7 +52,8 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
                     body.getInteger("rows"),
                     body.getInteger("columns"),
                     this
-                ) //to create client.puzzle
+                )
+                puzzle.updateTiles(body.getJsonArray("tiles").map { it as JsonObject })
                 puzzle.isVisible = true
 
                 openWS(puzzleID)
@@ -97,6 +100,7 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
                 val response = it.result()
                 val body = response.bodyAsJsonObject()
                 playerToken = body.getString("playerToken")
+                getPuzzleTiles()
                 println("Response: $body")
             } else {
                 println("Something went wrong ${it.cause().message}")
@@ -104,22 +108,20 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
         }
     }
 
-
-    fun getPuzzleTiles() : List<JsonObject> {
+    private fun getPuzzleTiles() {
         val result = mutableListOf<JsonObject>()
         val params = JsonObject().put("puzzleID", puzzleID)
 
-        webClient.get(port, "localhost", "/client.puzzle/$puzzleID/tiles").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code ${response.body()}")
-                result.add(response.bodyAsJsonObject())
-            } else {
-                println("Something went wrong ${it.cause().message}")
+        vertx.setPeriodic(5000) {
+            webClient.get(port, "localhost", "/client.puzzle/$puzzleID/tiles").sendJson(params) {
+                if (it.succeeded()) {
+                    val response = it.result()
+                    val code = response.statusCode()
+                    println("Status code: $code ${response.body()}")
+                    result.add(response.bodyAsJsonObject())
+                } else println("Something went wrong ${it.cause().message}")
             }
         }
-        return result
     }
 
 
