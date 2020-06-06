@@ -9,6 +9,7 @@ import client.view.Tile
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import java.awt.Image
+import java.io.File
 import javax.swing.ImageIcon
 
 

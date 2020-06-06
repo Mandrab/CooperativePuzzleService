@@ -5,15 +5,13 @@ import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import org.junit.Assert.fail
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 
 
 class TestRESTful {
@@ -48,7 +46,7 @@ class TestRESTful {
         }.onFailure { fail() }
 
         result.deadline(2000)
-        assertEquals(6, result.result, "All the callback should have been called")
+        assertEquals("All the callback should have been called", 6, result.result)
     }
 
     /**

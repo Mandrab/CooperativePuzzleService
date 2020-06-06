@@ -6,10 +6,11 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 import service.db.DBConnector
+import java.io.File
 import kotlin.random.Random
 
 object RESTful {
-    private const val IMAGE_URL = "res/bletchley-park-mansion.jpg"
+    private const val IMAGE_URL = "bletchley-park-mansion.jpg"
     private const val GRID_COL_COUNT = 5
     private const val GRID_ROW_COUNT = 3
 
@@ -18,13 +19,13 @@ object RESTful {
         do {
             puzzleID = "Puzzle${Random.nextInt(0, Int.MAX_VALUE)}"
             val accomplished = DBConnector.addPuzzle(puzzleID,
-                IMAGE_URL,
+                "res${File.separator}$IMAGE_URL",
                 GRID_COL_COUNT,
                 GRID_ROW_COUNT
             )
         } while(!accomplished)
 
-        val jResponse = JsonObject().put("puzzleID", puzzleID).put("imageURL", IMAGE_URL).put("columns", GRID_COL_COUNT)
+        val jResponse = JsonObject().put("puzzleID", puzzleID).put("imageURL", "res${File.separator}$IMAGE_URL").put("columns", GRID_COL_COUNT)
             .put("rows", GRID_ROW_COUNT).encode()
 
         val response = ctx.response()

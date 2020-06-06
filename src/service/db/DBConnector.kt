@@ -158,7 +158,7 @@ object DBConnector {
 
                 val tilePath = PATH_PREFIX + puzzleID + File.separator + "tile${x + columns * y}.png"
                 ImageIO.write(imagePortion, "png", File(tilePath))
-                paths.add(tilePath)
+                paths.add(tilePath.replace("\\", "/"))
             }
         }
         return paths

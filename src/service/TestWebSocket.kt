@@ -6,10 +6,10 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
+import junit.framework.Assert.assertEquals
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import kotlin.test.assertEquals
 
 class TestWebSocket {
     private val vertx = Vertx.vertx()
@@ -27,7 +27,7 @@ class TestWebSocket {
         }.onFailure { Assert.fail() }
 
         result.deadline(2000)
-        assertEquals(3, result.result, "Other problems in service prevent from run this")
+        assertEquals("Other problems in service prevent from run this",3, result.result)
     }
 
     private fun sendAndReceiveData(puzzleID: String, playerID: String): Future<Boolean> {
