@@ -112,8 +112,9 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
             webClient.get(port, "localhost", "/puzzle/$puzzleID").sendJson(params) {
                 if (it.succeeded()) {
                     val body = it.result().bodyAsJsonObject()
-                    body.getString("status")// TODO
+                    val status = body.getString("status")
                     puzzle.updateTiles(body.getJsonArray("tiles").map { it as JsonObject })
+                    if(status == "complete") puzzle.puzzleComplete()
                 } else println("Something went wrong ${it.cause().message}")
             }
         }

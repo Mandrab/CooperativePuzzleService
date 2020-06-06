@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage
 import java.net.URL
 import javax.imageio.ImageIO
 import javax.swing.*
+import kotlin.system.exitProcess
 
 
 class PuzzleBoard(
@@ -91,8 +92,8 @@ class PuzzleBoard(
         pack()
     }
 
-    private fun checkSolution() {
-        // TODO request to server
-        JOptionPane.showMessageDialog(this, "Puzzle Completed!", "", JOptionPane.INFORMATION_MESSAGE)
+    fun puzzleComplete() {
+        val pane = JOptionPane.showConfirmDialog(this, "Puzzle Completed!", "", JOptionPane.INFORMATION_MESSAGE)
+        /*if ( pane == JOptionPane.CLOSED_OPTION || pane == JOptionPane.OK_OPTION)*/ exitProcess(0)
     }
 }
