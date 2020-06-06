@@ -25,11 +25,11 @@ object DBConnector {
         val puzzles = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()?.map { PuzzleInfo.parse(JsonObject(it)) }
         if (puzzles != null && puzzles.any { it.puzzleID == puzzleID }) return false
 
-        File(PUZZLES_LIST_FILE).appendText(PuzzleInfo(puzzleID, imageURL, colsCount, rowsCount).toJson().encode() + "\n")
+        File(PUZZLES_LIST_FILE).appendText(PuzzleInfo(puzzleID, imageURL, colsCount, rowsCount).toJson().encode() + System.lineSeparator())
         val tilesPath = genTilesImage(imageURL, puzzleID, colsCount, rowsCount) ?: return false
         val positions = (0 until rowsCount).flatMap { y -> (0 until colsCount).map { x -> Pair(x, y) } }.shuffled().iterator()
-        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText((0 until rowsCount).joinToString("\n") { y ->
-            (0 until colsCount).joinToString("\n") { x -> (x + colsCount * y).let {
+        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText((0 until rowsCount).joinToString(System.lineSeparator()) { y ->
+            (0 until colsCount).joinToString(System.lineSeparator()) { x -> (x + colsCount * y).let {
                 TileInfo("$it", tilesPath[it], Pair(x, y), positions.next()).toJson().encode()
             } }
         })
@@ -91,7 +91,7 @@ object DBConnector {
                 else -> it
             }
         }
-        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText(newTilesList.joinToString("\n") { it.toJson().encode() })
+        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText(newTilesList.joinToString(System.lineSeparator()) { it.toJson().encode() })
         if (newTilesList.all { it.currentPosition == it.originalPosition }) complete(puzzleID)
         return true
     }
@@ -102,7 +102,7 @@ object DBConnector {
         var playerID: String
         do playerID = Random.nextInt(0, Int.MAX_VALUE).toString()
         while(lines.contains(playerID))
-        File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).appendText(PlayerInfo(playerID).toJson().encode() + "\n")
+        File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).appendText(PlayerInfo(playerID).toJson().encode() + System.lineSeparator())
         return playerID
     }
 
@@ -110,7 +110,7 @@ object DBConnector {
         if (!getPuzzlesIDs().contains(puzzleID)) return
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(lines.map { PlayerInfo.parse(JsonObject(it)) }
-            .joinToString("\n") {
+            .joinToString(System.lineSeparator()) {
                 when (it.playerID) {
                     playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(x, y))
                     else -> it
@@ -123,7 +123,7 @@ object DBConnector {
 
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(
             File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).readLines().map { PlayerInfo.parse(JsonObject(it)) }
-                .joinToString("\n") {
+                .joinToString(System.lineSeparator()) {
                     when (it.playerID) {
                         playerID -> PlayerInfo(it.playerID, socketHandlerID ?: it.socketHandlerID)
                         else -> it
