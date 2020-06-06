@@ -27,9 +27,10 @@ object DBConnector {
 
         File(PUZZLES_LIST_FILE).appendText(PuzzleInfo(puzzleID, imageURL, colsCount, rowsCount).toJson().encode() + "\n")
         val tilesPath = genTilesImage(imageURL, puzzleID, colsCount, rowsCount) ?: return false
+        val positions = (0 until rowsCount).flatMap { y -> (0 until colsCount).map { x -> Pair(x, y) } }.shuffled().iterator()
         File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText((0 until rowsCount).joinToString("\n") { y ->
             (0 until colsCount).joinToString("\n") { x -> (x + colsCount * y).let {
-                TileInfo("$it", tilesPath[it], Pair(x, y), Pair(x, y)).toJson().encode()
+                TileInfo("$it", tilesPath[it], Pair(x, y), positions.next()).toJson().encode()
             } }
         })
         return true
