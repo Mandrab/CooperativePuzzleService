@@ -4,8 +4,8 @@ import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import client.puzzle.PuzzleBoard
-import client.puzzle.Tile
+import client.view.PuzzleBoard
+import client.view.Tile
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import java.awt.Image
@@ -20,6 +20,8 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
 
     private lateinit var puzzleID: String
     private lateinit var playerToken: String
+
+    private var lastMouseUpdate = System.currentTimeMillis()
 
     override fun start() {
         webClient.post(port, SERVICE_HOST, "/puzzle").send().onSuccess { response ->
@@ -40,11 +42,13 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
                             downloadedTiles[tile.tileID] = ImageIcon(buffer.bytes).image
 
                             if (downloadedTiles.size == puzzle.tiles.size) {
-                                puzzleBoard.tiles = puzzle.tiles.map { tileInfo -> Tile(
-                                    downloadedTiles[tileInfo.tileID]!!,
-                                    tileInfo.tileID,
-                                    tileInfo.position
-                                ) }
+                                puzzleBoard.tiles = puzzle.tiles.map { tileInfo ->
+                                    Tile(
+                                        downloadedTiles[tileInfo.tileID]!!,
+                                        tileInfo.tileID,
+                                        tileInfo.position
+                                    )
+                                }
                             }
                         }
                     }
@@ -67,6 +71,15 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
         webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/${tile.tileID}").sendJson(params).onSuccess {
             if (it.statusCode() != 200) println("Something went wrong. Status code: ${it.statusCode()}")
         }.onFailure { println("Something went wrong ${it.message}") }
+    }
+
+    fun mouseMovement(x: Int, y: Int) {
+        if (this::playerToken.isInitialized && lastMouseUpdate + MOUSE_UPDATE_TIME < System.currentTimeMillis()) {
+            webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").sendJsonObject(
+                JsonObject().put("playerToken", playerToken).put("position", JsonObject().put("x", x).put("y", y))
+            )
+            lastMouseUpdate = System.currentTimeMillis()
+        }
     }
 
     private fun infoPuzzle(): Future<PuzzleInfo> {
@@ -95,11 +108,19 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
     }
 
     private fun schedulePeriodicUpdate() {
-        vertx.setPeriodic(5000) {
+        vertx.setPeriodic(PUZZLE_UPDATE_TIME) {
             infoPuzzle().onSuccess { puzzleInfo ->
                 puzzleInfo.tiles?.let { tiles ->
                     puzzleBoard.updateTiles(tiles.map { Pair(it.tileID, it.position) }.toMap()) }
             }.onFailure { println("Something went wrong ${it.message}") }
+        }
+        vertx.setPeriodic(MOUSE_UPDATE_TIME) {
+            webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").send().onSuccess {
+                puzzleBoard.updateMouses(it.bodyAsJsonArray().map { body -> body as JsonObject; Pair(
+                    body.getString("playerID"),
+                    body.getJsonObject("position").let { p -> Pair(p.getInteger("x"), p.getInteger("y")) }
+                ) }.toMap())
+            }
         }
     }
 
@@ -120,5 +141,7 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
     companion object {
         const val SERVICE_HOST = "localhost"
         const val DATA_PORT = 9000
+        const val MOUSE_UPDATE_TIME = 300L
+        const val PUZZLE_UPDATE_TIME = 1500L
     }
 }

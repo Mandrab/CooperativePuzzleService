@@ -91,13 +91,13 @@ object DBConnector {
         return playerID
     }
 
-    @Synchronized fun newPosition(puzzleID: String, playerID: String, column: Int, row: Int) {
+    @Synchronized fun newPosition(puzzleID: String, playerID: String, x: Int, y: Int) {
         if (!getPuzzlesIDs().contains(puzzleID)) return
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(lines.map { PlayerInfo.parse(JsonObject(it)) }
             .joinToString("\n") {
                 when (it.playerID) {
-                    playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(column, row))
+                    playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(x, y))
                     else -> it
                 }.toJson().encode()
             })

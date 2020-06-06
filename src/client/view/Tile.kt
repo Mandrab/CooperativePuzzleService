@@ -1,4 +1,4 @@
-package client.puzzle
+package client.view
 
 import java.awt.Image
 

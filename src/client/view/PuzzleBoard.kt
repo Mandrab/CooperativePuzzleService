@@ -1,12 +1,16 @@
-package client.puzzle
+package client.view
 
 import client.Client
 import java.awt.*
+import java.awt.Color
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.*
 
 
-class PuzzleBoard(rows: Int, columns: Int, private val client: Client) : JFrame() {
+class PuzzleBoard(private val rows: Int, private val columns: Int, private val client: Client) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
+    private val pointerPane = PointerPanel()
     private var started = false
 
     var tiles: List<Tile>? = null
@@ -14,15 +18,13 @@ class PuzzleBoard(rows: Int, columns: Int, private val client: Client) : JFrame(
 
     init {
         title = "Puzzle"
-
         layout = GridLayout (rows, columns, 0, 0)
-        /*add(JTextField("Players Name:").apply { isEditable = false }, gbc)
 
-        gbc.gridx = 1
-        gbc.gridy = 0
+        getRootPane().glassPane = pointerPane
+
+        /*add(JTextField("Players Name:").apply { isEditable = false }, gbc)
         val playerName = JTextField("")
-        add(playerName, gbc)
-        gbc.gridy = 1*/
+        add(playerName)*/
 
         add(JButton("Start game").apply { addActionListener {
             this@PuzzleBoard.remove(this)
@@ -46,20 +48,41 @@ class PuzzleBoard(rows: Int, columns: Int, private val client: Client) : JFrame(
         val diffs = tilePositions.filter { tiles?.first { tile -> tile.tileID == it.key }?.currentPosition != it.value }
 
         if (diffs.isNotEmpty()) {
-            tiles = tiles?.map { tile -> diffs[tile.tileID]?.let { Tile(tile.image, tile.tileID, it) } ?: tile }
+            tiles = tiles?.map { tile -> diffs[tile.tileID]?.let {
+                Tile(
+                    tile.image,
+                    tile.tileID,
+                    it
+                )
+            } ?: tile }
             paintPuzzle()
         }
     }
 
+    fun updateMouse(x: Int, y: Int) = client.mouseMovement(x, y)
+
+    fun updateMouses(mousePositions: Map<String, Pair<Int, Int>>) = pointerPane.drawPointers(mousePositions)
+
     private fun paintPuzzle() {
         contentPane.removeAll()
 
-        tiles?.sorted()?.forEach { tile ->
+        val buttons = mutableListOf<TileButton>()
+        tiles?.sorted()?.forEachIndexed { idx, tile ->
             val button = TileButton(tile)
             contentPane.add(button)
+            buttons.add(button)
             button.border = BorderFactory.createLineBorder(Color.gray)
             button.addActionListener { selectionManager.selectTile(tile, client) }
+            button.addMouseMotionListener(object : MouseAdapter() {
+                override fun mouseMoved(e: MouseEvent) {
+                    super.mouseMoved(e)
+                    updateMouse((button.width * (idx % columns) + e.point.x) * 100/size.width,
+                        (button.height * (idx / columns) + e.point.y) * 100/size.height)
+                }
+            })
         }
+        pointerPane.buttons = buttons
+
         setLocationRelativeTo(null)
         pack()
     }

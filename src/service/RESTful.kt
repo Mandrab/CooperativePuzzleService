@@ -156,7 +156,10 @@ object RESTful {
     }
 
     internal fun positionSubmission(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), ctx.bodyAsJson, "puzzleID", "playerToken", "column", "row")) return
+        if (!requestContains(ctx.request(), ctx.bodyAsJson, "puzzleID", "playerToken", "position")) return
+
+        val position = ctx.bodyAsJson.getJsonObject("position")
+        if (!position.containsKey("x") || !position.containsKey("y")) return
 
         val puzzleID = ctx.request().getParam("puzzleID")
         if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
@@ -164,9 +167,9 @@ object RESTful {
         val playerToken = ctx.bodyAsJson.getString("playerToken")
         val playerInfo = DBConnector.getPuzzlePlayers(puzzleID).firstOrNull { it.playerID == playerToken }
 
-        val column = ctx.bodyAsJson.getInteger("column")
-        val row = ctx.bodyAsJson.getInteger("row")
-        DBConnector.newPosition(puzzleID, playerToken, column, row)
+        val x = position.getInteger("x")
+        val y = position.getInteger("y")
+        DBConnector.newPosition(puzzleID, playerToken, x, y)
 
         ctx.response().apply { statusCode = playerInfo?.lastPosition?.let { 200 } ?: 201 }.end()
     }
