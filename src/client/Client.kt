@@ -36,7 +36,8 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
 
             val downloadedTiles = mutableMapOf<String,Image>()
             infoPuzzle().onSuccess { puzzle ->
-                puzzle.tiles?.forEach { tile ->
+                if (puzzle.status == "completed") puzzleBoard.complete()
+                else puzzle.tiles?.forEach { tile ->
                     httpClient.get(DATA_PORT, SERVICE_HOST, "/${tile.imageURL}").onSuccess { response ->
                         response.body().onSuccess { buffer ->
                             downloadedTiles[tile.tileID] = ImageIcon(buffer.bytes).image
@@ -109,9 +110,16 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
     }
 
     private fun schedulePeriodicUpdate() {
-        vertx.setPeriodic(PUZZLE_UPDATE_TIME) {
+        vertx.setPeriodic(PUZZLE_UPDATE_TIME) { taskID ->
             infoPuzzle().onSuccess { puzzleInfo ->
-                puzzleInfo.tiles?.let { tiles ->
+                println(puzzleInfo.status)
+                if (puzzleInfo.status == "completed") {
+                    puzzleInfo.tiles?.let { tiles ->
+                        puzzleBoard.updateTiles(tiles.map { Pair(it.tileID, it.position) }.toMap())
+                    }
+                    puzzleBoard.complete()
+                    vertx.cancelTimer(taskID)
+                } else puzzleInfo.tiles?.let { tiles ->
                     puzzleBoard.updateTiles(tiles.map { Pair(it.tileID, it.position) }.toMap()) }
             }.onFailure { println("Something went wrong ${it.message}") }
         }

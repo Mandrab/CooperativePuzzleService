@@ -48,11 +48,25 @@ object DBConnector {
             PlayerInfo.parse(JsonObject(it)) } ?: emptyList()
     }
 
+    fun isComplete(puzzleID: String): Boolean = File(PUZZLES_LIST_FILE).readLines()
+        .map { PuzzleInfo.parse(JsonObject(it)) }.any { it.puzzleID == puzzleID && it.status == PuzzleInfo.Status.COMPLETED }
+
+    fun complete(puzzleID: String) {
+        File(PUZZLES_LIST_FILE).writeText(
+            File(PUZZLES_LIST_FILE).readLines().map { PuzzleInfo.parse(JsonObject(it)) }
+                .map {
+                    if (it.puzzleID == puzzleID)
+                        PuzzleInfo(it.puzzleID, it.imageURL, it.columnsCount, it.rowsCount, PuzzleInfo.Status.COMPLETED)
+                    else it
+                }.joinToString(System.lineSeparator()) { it.toJson().encode() }
+        )
+    }
+
     @Synchronized fun getPuzzlesIDs(): List<String> = File(PUZZLES_LIST_FILE).takeIf { it.exists() }?.readLines()
             ?.map { PuzzleInfo.parse(JsonObject(it)).puzzleID } ?: emptyList()
 
     @Synchronized fun updateTilePosition(puzzleID: String, tileID: String, newColumn: Int, newRow: Int): Boolean {
-        if (!getPuzzlesIDs().contains(puzzleID)) return false
+        if (!getPuzzlesIDs().contains(puzzleID) || isComplete(puzzleID)) return false
 
         val tiles = File(PATH_PREFIX + puzzleID + TILES_SUFFIX).readLines().map { TileInfo.parse(JsonObject(it)) }
         val swapTile1 = tiles.firstOrNull { it.tileID == tileID }
@@ -60,25 +74,25 @@ object DBConnector {
 
         if (swapTile1 == null || swapTile2 == null) return false
 
-        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText(
-            tiles.joinToString("\n") {
-                when (it.tileID) {
-                    swapTile1.tileID -> TileInfo(
-                        swapTile1.tileID,
-                        swapTile1.tileImageURL,
-                        swapTile1.originalPosition,
-                        swapTile2.currentPosition
-                    )
-                    swapTile2.tileID -> TileInfo(
-                        swapTile2.tileID,
-                        swapTile2.tileImageURL,
-                        swapTile2.originalPosition,
-                        swapTile1.currentPosition
-                    )
-                    else -> it
-                }.toJson().encode()
+        val newTilesList = tiles.map {
+            when (it.tileID) {
+                swapTile1.tileID -> TileInfo(
+                    swapTile1.tileID,
+                    swapTile1.tileImageURL,
+                    swapTile1.originalPosition,
+                    swapTile2.currentPosition
+                )
+                swapTile2.tileID -> TileInfo(
+                    swapTile2.tileID,
+                    swapTile2.tileImageURL,
+                    swapTile2.originalPosition,
+                    swapTile1.currentPosition
+                )
+                else -> it
             }
-        )
+        }
+        File(PATH_PREFIX + puzzleID + TILES_SUFFIX).writeText(newTilesList.joinToString("\n") { it.toJson().encode() })
+        if (newTilesList.all { it.currentPosition == it.originalPosition }) complete(puzzleID)
         return true
     }
 

@@ -1,8 +1,8 @@
 package client.view
 
 import client.Client
-import java.awt.*
 import java.awt.Color
+import java.awt.GridLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
@@ -11,10 +11,16 @@ import javax.swing.*
 class PuzzleBoard(private val rows: Int, private val columns: Int, private val client: Client) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
     private val pointerPane = PointerPanel()
-    private var started = false
+    private var status = Status.IDLE
+
+    private enum class Status {
+        IDLE,
+        STARTED,
+        COMPLETED
+    }
 
     var tiles: List<Tile>? = null
-        set(value) { field = value; if (started) paintPuzzle() }
+        set(value) { field = value; if (status == Status.STARTED) paintPuzzle() }
 
     init {
         title = "Puzzle"
@@ -29,7 +35,7 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         add(JButton("Start game").apply { addActionListener {
             this@PuzzleBoard.remove(this)
 
-            started = true
+            status = Status.STARTED
             tiles?.let { paintPuzzle() }
 
             //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
@@ -42,8 +48,8 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         pack()
     }
 
-    fun updateTiles(tilePositions: Map<String, Pair<Int,Int>>) {
-        tiles ?: return
+    fun updateTiles(tilePositions: Map<String, Pair<Int,Int>>) = SwingUtilities.invokeAndWait {
+        tiles ?: return@invokeAndWait
 
         val diffs = tilePositions.filter { tiles?.first { tile -> tile.tileID == it.key }?.currentPosition != it.value }
 
@@ -61,7 +67,18 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
 
     fun updateMouse(x: Int, y: Int) = client.mouseMovement(x, y)
 
-    fun updateMouses(mousePositions: Map<String, Pair<Int, Int>>) = pointerPane.drawPointers(mousePositions)
+    fun updateMouses(mousePositions: Map<String, Pair<Int, Int>>) = SwingUtilities.invokeAndWait {
+        pointerPane.drawPointers(mousePositions)
+    }
+
+    fun complete() = SwingUtilities.invokeAndWait  {
+        status = Status.COMPLETED
+        paintPuzzle()
+        JOptionPane("Puzzle Completed!").createDialog(this, "").apply {
+            isModal = false
+            defaultCloseOperation = JDialog.DO_NOTHING_ON_CLOSE
+        }.isVisible = true
+    }
 
     private fun paintPuzzle() {
         contentPane.removeAll()
@@ -72,7 +89,7 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
             contentPane.add(button)
             buttons.add(button)
             button.border = BorderFactory.createLineBorder(Color.gray)
-            button.addActionListener { selectionManager.selectTile(tile, client) }
+            if (status == Status.STARTED) button.addActionListener { selectionManager.selectTile(tile, client) }
             button.addMouseMotionListener(object : MouseAdapter() {
                 override fun mouseMoved(e: MouseEvent) {
                     super.mouseMoved(e)
@@ -85,10 +102,5 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
 
         setLocationRelativeTo(null)
         pack()
-    }
-
-    private fun checkSolution() {
-        // TODO request to server
-        JOptionPane.showMessageDialog(this, "Puzzle Completed!", "", JOptionPane.INFORMATION_MESSAGE)
     }
 }
