@@ -65,8 +65,9 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
         schedulePeriodicUpdate()
     }
 
-    fun updateTilePosition(tile : Tile, newPosX: Int, newPosY: Int) {
-        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tile.tileID).put("palyerToken", playerToken).put("x", newPosX).put("y", newPosY)
+    fun updateTilePosition(tile : Tile, newColumn: Int, newRow: Int) {
+        val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tile.tileID).put("playerToken", playerToken)
+            .put("newColumn", newColumn).put("newRow", newRow)
 
         webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/${tile.tileID}").sendJson(params).onSuccess {
             if (it.statusCode() != 200) println("Something went wrong. Status code: ${it.statusCode()}")

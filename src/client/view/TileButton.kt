@@ -17,5 +17,5 @@ class TileButton(private val tile: Tile) : JButton(ImageIcon(tile.image)) {
         })
     }
 
-    fun redraw() = update(graphics)
+    fun redraw() = graphics?.let { update(it) }
 }
