@@ -1,4 +1,4 @@
-package client.puzzle
+package client.view
 
 import java.awt.Color
 import java.awt.event.MouseAdapter
@@ -8,7 +8,7 @@ import javax.swing.ImageIcon
 import javax.swing.JButton
 
 
-class TileButton(tile: Tile) : JButton(ImageIcon(tile.image)) {
+class TileButton(private val tile: Tile) : JButton(ImageIcon(tile.image)) {
     init {
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -16,4 +16,6 @@ class TileButton(tile: Tile) : JButton(ImageIcon(tile.image)) {
             }
         })
     }
+
+    fun redraw() = update(graphics)
 }

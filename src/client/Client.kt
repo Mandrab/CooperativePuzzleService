@@ -1,136 +1,147 @@
 package client
 
-import client.view.View
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpClient
-import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import client.puzzle.PuzzleBoard
-import client.puzzle.Tile
-import java.awt.Point
+import client.view.PuzzleBoard
+import client.view.Tile
+import io.vertx.core.Future
+import io.vertx.core.Promise
+import java.awt.Image
+import javax.swing.ImageIcon
 
 
 class Client(private val name: String, private val port: Int) : AbstractVerticle() {
-    private val view = View(this)
-
     private val webClient: WebClient by lazy { WebClient.create(vertx) }
     private val httpClient: HttpClient by lazy { vertx.createHttpClient() }
-    private lateinit var webSocket: WebSocket
-    private lateinit var puzzle: PuzzleBoard
-    private var puzzleID = String()
-    private var playerToken = String()
 
-    override fun start() = joinPuzzle()
+    private lateinit var puzzleBoard: PuzzleBoard
 
-    private fun joinPuzzle() {
-        webClient.post(port, "localhost", "/puzzle").send {
-            if (it.succeeded()) {
-                val response = it.result()
-                val body = response.bodyAsJsonObject()
-                println("Response: $body")
-                puzzleID = body.getString("puzzleID")
-                infoPuzzle(puzzleID)
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
-        }
-    }
+    private lateinit var puzzleID: String
+    private lateinit var playerToken: String
 
-    private fun infoPuzzle(puzzleID : String) {
-        val params = JsonObject().put("puzzleID", puzzleID)
+    private var lastMouseUpdate = System.currentTimeMillis()
 
-        webClient.get(port, "localhost", "/puzzle/$puzzleID").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val body = response.bodyAsJsonObject()
-                println("Response: $body")
-                puzzle = PuzzleBoard(
-                    body.getInteger("rows"),
-                    body.getInteger("columns"),
-                    this,
-                    body.getJsonArray("tiles").map { it as JsonObject }
-                )
-                puzzle.isVisible = true
+    override fun start() {
+        webClient.post(port, SERVICE_HOST, "/puzzle").send().onSuccess { response ->
+            val body = response.bodyAsJsonObject()
+            puzzleID = body.getString("puzzleID")
 
-                openWS(puzzleID)
-            } else println("Something went wrong ${it.cause().message}")
-        }
-    }
+            puzzleBoard = PuzzleBoard(
+                body.getInteger("rows"),
+                body.getInteger("columns"),
+                this
+            )
 
-    private fun openWS(puzzleID: String) {
-        httpClient.webSocket(port, "localhost", "/puzzle/$puzzleID/user") {
-            it.result()?.also { ws ->
-                webSocket = ws
+            val downloadedTiles = mutableMapOf<String,Image>()
+            infoPuzzle().onSuccess { puzzle ->
+                puzzle.tiles?.forEach { tile ->
+                    httpClient.get(DATA_PORT, SERVICE_HOST, "/${tile.imageURL}").onSuccess { response ->
+                        response.body().onSuccess { buffer ->
+                            downloadedTiles[tile.tileID] = ImageIcon(buffer.bytes).image
 
-                ws.textMessageHandler {
-                    println(this.toString() + it)
-                    val player = JsonObject(it).getString("player")
-                    JsonObject(it).getJsonObject("position").apply {
-                        view.drawPointer(player, getInteger("x"), getInteger("y"))
+                            if (downloadedTiles.size == puzzle.tiles.size) {
+                                puzzleBoard.tiles = puzzle.tiles.map { tileInfo ->
+                                    Tile(
+                                        downloadedTiles[tileInfo.tileID]!!,
+                                        tileInfo.tileID,
+                                        tileInfo.position
+                                    )
+                                }
+                            }
+                        }
                     }
-                }.binaryMessageHandler {
-                    it.toJsonObject().getString("player")
-                    val player = it.toJsonObject().getString("player")
-                    it.toJsonObject().getJsonObject("position").apply {
-                        view.drawPointer(player, getInteger("x"), getInteger("y"))
-                    }
-                }.exceptionHandler {
-                    TODO()
-                }.closeHandler {
-                    TODO()
                 }
-            }
-        }
+            }.onFailure { println("Something went wrong ${it.message}") }
+        }.onFailure { println("Something went wrong ${it.message}") }
     }
 
-    fun newMovement(point: Point) {
-        val msg = JsonObject().put("player", name).put("position", JsonObject().put("x", point.x).put("y", point.y))
-        //webSocket.writeBinaryMessage(msg.toBuffer())
+    fun joinGame() {
+        webClient.post(port, SERVICE_HOST, "/puzzle/$puzzleID/user").send().onSuccess {
+            playerToken = it.bodyAsJsonObject().getString("playerToken")
+        }.onFailure { println("Something went wrong ${it.message}") }
+
+        schedulePeriodicUpdate()
     }
 
-    fun playGame() {
-        val params = JsonObject().put("puzzleID", puzzleID)
-
-        webClient.post(port, "localhost", "/puzzle/$puzzleID/user").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val body = response.bodyAsJsonObject()
-                playerToken = body.getString("playerToken")
-                getPuzzleTiles()
-                println("Response: $body")
-            } else {
-                println("Something went wrong ${it.cause().message}")
-            }
-        }
-    }
-
-    private fun getPuzzleTiles() {
-        val params = JsonObject().put("puzzleID", puzzleID)
-
-        vertx.setPeriodic(5000) {
-            webClient.get(port, "localhost", "/puzzle/$puzzleID").sendJson(params) {
-                if (it.succeeded()) {
-                    val body = it.result().bodyAsJsonObject()
-                    val status = body.getString("status")
-                    puzzle.updateTiles(body.getJsonArray("tiles").map { it as JsonObject })
-                    if(status == "complete") puzzle.puzzleComplete()
-                } else println("Something went wrong ${it.cause().message}")
-            }
-        }
-    }
-
-    fun updateTilePosition(tile : Tile, newPosX: Int, newPosY: Int){
+    fun updateTilePosition(tile : Tile, newPosX: Int, newPosY: Int) {
         val params = JsonObject().put("puzzleID", puzzleID).put("tileID", tile.tileID).put("palyerToken", playerToken).put("x", newPosX).put("y", newPosY)
 
-        webClient.put(port, "localhost", "/puzzle/$puzzleID/${tile.tileID}").sendJson(params) {
-            if (it.succeeded()) {
-                val response = it.result()
-                val code = response.statusCode()
-                println("Status code: $code ${response.body()}")
-            } else {
-                println("Something went wrong ${it.cause().message}")
+        webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/${tile.tileID}").sendJson(params).onSuccess {
+            if (it.statusCode() != 200) println("Something went wrong. Status code: ${it.statusCode()}")
+        }.onFailure { println("Something went wrong ${it.message}") }
+    }
+
+    fun mouseMovement(x: Int, y: Int) {
+        if (this::playerToken.isInitialized && lastMouseUpdate + MOUSE_UPDATE_TIME < System.currentTimeMillis()) {
+            webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").sendJsonObject(
+                JsonObject().put("playerToken", playerToken).put("position", JsonObject().put("x", x).put("y", y))
+            )
+            lastMouseUpdate = System.currentTimeMillis()
+        }
+    }
+
+    private fun infoPuzzle(): Future<PuzzleInfo> {
+        val result = Promise.promise<PuzzleInfo>()
+
+        webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID").send().onSuccess { response ->
+            val body = response.bodyAsJsonObject()
+
+            result.complete(
+                PuzzleInfo(
+                    puzzleID,
+                    body.getString("imageURL"),
+                    Pair(body.getInteger("column"), body.getInteger("row")),
+                    body.getString("status"),
+                    body.getJsonArray("tiles").map { it as JsonObject }.map {
+                        TileInfo(
+                            it.getString("tileID"),
+                            it.getString("imageURL"),
+                            Pair(it.getInteger("column"), it.getInteger("row"))
+                        )
+                    }
+                )
+            )
+        }.onFailure { println("Something went wrong ${it.message}") }
+        return result.future()
+    }
+
+    private fun schedulePeriodicUpdate() {
+        vertx.setPeriodic(PUZZLE_UPDATE_TIME) {
+            infoPuzzle().onSuccess { puzzleInfo ->
+                puzzleInfo.tiles?.let { tiles ->
+                    puzzleBoard.updateTiles(tiles.map { Pair(it.tileID, it.position) }.toMap()) }
+            }.onFailure { println("Something went wrong ${it.message}") }
+        }
+        vertx.setPeriodic(MOUSE_UPDATE_TIME) {
+            webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").send().onSuccess {
+                puzzleBoard.updateMouses(it.bodyAsJsonArray().map { body -> body as JsonObject; Pair(
+                    body.getString("playerID"),
+                    body.getJsonObject("position").let { p -> Pair(p.getInteger("x"), p.getInteger("y")) }
+                ) }.toMap())
             }
         }
+    }
+
+    private data class PuzzleInfo(
+        val puzzleID: String,
+        val imageURL: String,
+        val position: Pair<Int, Int>,
+        val status: String,
+        val tiles: List<TileInfo>?
+    )
+
+    private data class TileInfo(
+        val tileID: String,
+        val imageURL: String,
+        val position: Pair<Int, Int>
+    )
+
+    companion object {
+        const val SERVICE_HOST = "localhost"
+        const val DATA_PORT = 9000
+        const val MOUSE_UPDATE_TIME = 300L
+        const val PUZZLE_UPDATE_TIME = 1500L
     }
 }

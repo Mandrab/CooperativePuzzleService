@@ -1,6 +1,7 @@
-package client.puzzle
+package client.view
 
 import java.awt.Image
+
 
 data class Tile(val image: Image, val tileID: String, var currentPosition: Pair<Int, Int>) : Comparable<Tile> {
 
