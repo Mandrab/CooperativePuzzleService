@@ -31,7 +31,9 @@ object RESTful {
             statusCode = 201
             putHeader("content-type", "application/json")
             end(JsonObject().put("puzzleID", puzzleID).put("imageURL", "res${File.separator}$IMAGE_URL")
-                    .put("columns", GRID_COL_COUNT).put("rows", GRID_ROW_COUNT).encode())
+                    .put("columns", GRID_COL_COUNT).put("rows",
+                    GRID_ROW_COUNT
+                ).encode())
         }
     }
 
@@ -105,6 +107,7 @@ object RESTful {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         val tileID = ctx.request().getParam("tileID") ?: return
 
+        if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
         val tile = DBConnector.getPuzzleTiles(puzzleID).firstOrNull { it.tileID == tileID }
         tile ?: let { ctx.response().apply { statusCode = 404 }.end(); return }
 

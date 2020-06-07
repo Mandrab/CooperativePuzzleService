@@ -1,21 +1,18 @@
-package service
+package test.kotlin.service
 
 import io.vertx.core.Future
 import io.vertx.core.Promise
-import io.vertx.core.Vertx
 import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.web.client.WebClient
 import junit.framework.Assert.assertEquals
 import org.junit.Assert
-import org.junit.Before
 import org.junit.Test
+import service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class TestWebSocket {
-    private val vertx = Vertx.vertx()
-    private val client = WebClient.create(vertx)
+
+class WebSocket : AbsServiceTest() {
 
     @Test fun test() {
         val result = ResultLock(0, 3)
@@ -72,13 +69,4 @@ class TestWebSocket {
     }
 
     private fun timeStamp() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
-
-    @Before fun startService() {
-        val customLock = ResultLock(false)
-        val complete = Promise.promise<Void>()
-        Vertx.vertx().deployVerticle(Gateway(complete))
-        complete.future().onComplete { customLock.set { true } }
-        customLock.deadline(2000)
-        assert(customLock.result)
-    }
 }

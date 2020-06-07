@@ -37,6 +37,8 @@ object WebSocket {
             val timestamp = jObject.getString("timeStamp")?.let { timestamp ->
                 LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
             }!!
+            val playerInfo = DBConnector.getPuzzlePlayers(puzzleID).firstOrNull { it.playerID == playerToken } ?: return@binaryMessageHandler
+            if (playerInfo.timeStamp != null && timestamp.isBefore(playerInfo.timeStamp)) return@binaryMessageHandler
             DBConnector.newPosition(puzzleID, playerToken, x, y, timestamp)
 
             DBConnector.playerWS(puzzleID, jObject.getString("playerToken"), ws.binaryHandlerID())
