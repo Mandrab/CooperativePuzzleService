@@ -38,7 +38,7 @@ object RESTful {
     internal fun availablePuzzles(ctx: RoutingContext) {
         val jArray = JsonArray()
         DBConnector.getPuzzlesIDs().forEach { jArray.add(it) }
-
+        //TODO: necessito il puzzleID
         val response: HttpServerResponse = ctx.response()
         response.statusCode = 200
         response.putHeader("content-type", "application/json").end(

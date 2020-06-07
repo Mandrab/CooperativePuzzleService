@@ -9,7 +9,8 @@ import client.view.Tile
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import java.awt.Image
-import java.io.File
+import java.sql.Timestamp
+import java.util.*
 import javax.swing.ImageIcon
 
 
@@ -24,39 +25,80 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
 
     private var lastMouseUpdate = System.currentTimeMillis()
 
+    private var puzzleMousesTimestamp: Timestamp = Timestamp(Date().time)
+    private var puzzleTimestamp: Timestamp = Timestamp(Date().time)
+    private var puzzleIDTimestamp: Timestamp = Timestamp(Date().time)
+
+
     override fun start() {
-        webClient.post(port, SERVICE_HOST, "/puzzle").send().onSuccess { response ->
+        webClient.get(port, SERVICE_HOST, "/puzzle").send().onSuccess { response ->
             val body = response.bodyAsJsonObject()
-            puzzleID = body.getString("puzzleID")
+            if (puzzleTimestamp.before(Timestamp.valueOf(body.getString("timeStamp")))) {
+                puzzleTimestamp = Timestamp.valueOf(body.getString("timeStamp"))
+                puzzleID = body.getString("puzzleID")
 
-            puzzleBoard = PuzzleBoard(
-                body.getInteger("rows"),
-                body.getInteger("columns"),
-                this
-            )
+                puzzleBoard = PuzzleBoard(
+                        body.getInteger("rows"),
+                        body.getInteger("columns"),
+                        this
+                )
 
-            val downloadedTiles = mutableMapOf<String,Image>()
-            infoPuzzle().onSuccess { puzzle ->
-                if (puzzle.status == "completed") puzzleBoard.complete()
-                else puzzle.tiles?.forEach { tile ->
-                    httpClient.get(DATA_PORT, SERVICE_HOST, "/${tile.imageURL}").onSuccess { response ->
-                        response.body().onSuccess { buffer ->
-                            downloadedTiles[tile.tileID] = ImageIcon(buffer.bytes).image
+                val downloadedTiles = mutableMapOf<String, Image>()
+                infoPuzzle().onSuccess { puzzle ->
+                    if (puzzle.status == "completed") puzzleBoard.complete()
+                    else puzzle.tiles?.forEach { tile ->
+                        httpClient.get(DATA_PORT, SERVICE_HOST, "/${tile.imageURL}").onSuccess { response ->
+                            response.body().onSuccess { buffer ->
+                                downloadedTiles[tile.tileID] = javax.swing.ImageIcon(buffer.bytes).image
 
-                            if (downloadedTiles.size == puzzle.tiles.size) {
-                                puzzleBoard.tiles = puzzle.tiles.map { tileInfo ->
-                                    Tile(
-                                        downloadedTiles[tileInfo.tileID]!!,
-                                        tileInfo.tileID,
-                                        tileInfo.position
-                                    )
+                                if (downloadedTiles.size == puzzle.tiles.size) {
+                                    puzzleBoard.tiles = puzzle.tiles.map { tileInfo ->
+                                        client.view.Tile(
+                                                downloadedTiles[tileInfo.tileID]!!,
+                                                tileInfo.tileID,
+                                                tileInfo.position
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+        }.onFailure {
+            webClient.post(port, SERVICE_HOST, "/puzzle").send().onSuccess { response ->
+                val body = response.bodyAsJsonObject()
+                puzzleID = body.getString("puzzleID")
+
+                puzzleBoard = PuzzleBoard(
+                        body.getInteger("rows"),
+                        body.getInteger("columns"),
+                        this
+                )
+
+                val downloadedTiles = mutableMapOf<String, Image>()
+                infoPuzzle().onSuccess { puzzle ->
+                    if (puzzle.status == "completed") puzzleBoard.complete()
+                    else puzzle.tiles?.forEach { tile ->
+                        httpClient.get(DATA_PORT, SERVICE_HOST, "/${tile.imageURL}").onSuccess { response ->
+                            response.body().onSuccess { buffer ->
+                                downloadedTiles[tile.tileID] = ImageIcon(buffer.bytes).image
+
+                                if (downloadedTiles.size == puzzle.tiles.size) {
+                                    puzzleBoard.tiles = puzzle.tiles.map { tileInfo ->
+                                        Tile(
+                                                downloadedTiles[tileInfo.tileID]!!,
+                                                tileInfo.tileID,
+                                                tileInfo.position
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }.onFailure { println("Something went wrong ${it.message}") }
             }.onFailure { println("Something went wrong ${it.message}") }
-        }.onFailure { println("Something went wrong ${it.message}") }
+        }
     }
 
     fun joinGame() {
@@ -79,7 +121,7 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
     fun mouseMovement(x: Int, y: Int) {
         if (this::playerToken.isInitialized && lastMouseUpdate + MOUSE_UPDATE_TIME < System.currentTimeMillis()) {
             webClient.put(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").sendJsonObject(
-                JsonObject().put("playerToken", playerToken).put("position", JsonObject().put("x", x).put("y", y))
+                JsonObject().put("playerToken", playerToken).put("position", JsonObject().put("x", x).put("y", y)).put("timeStamp", Timestamp(Date().time))
             )
             lastMouseUpdate = System.currentTimeMillis()
         }
@@ -90,22 +132,24 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
 
         webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID").send().onSuccess { response ->
             val body = response.bodyAsJsonObject()
-
-            result.complete(
-                PuzzleInfo(
-                    puzzleID,
-                    body.getString("imageURL"),
-                    Pair(body.getInteger("column"), body.getInteger("row")),
-                    body.getString("status"),
-                    body.getJsonArray("tiles").map { it as JsonObject }.map {
-                        TileInfo(
-                            it.getString("tileID"),
-                            it.getString("imageURL"),
-                            Pair(it.getInteger("column"), it.getInteger("row"))
+            if (puzzleIDTimestamp.before(Timestamp.valueOf(body.getString("timeStamp")))) {
+                puzzleIDTimestamp = Timestamp.valueOf(body.getString("timeStamp"))
+                result.complete(
+                        PuzzleInfo(
+                                puzzleID,
+                                body.getString("imageURL"),
+                                Pair(body.getInteger("column"), body.getInteger("row")),
+                                body.getString("status"),
+                                body.getJsonArray("tiles").map { it as JsonObject }.map {
+                                    TileInfo(
+                                            it.getString("tileID"),
+                                            it.getString("imageURL"),
+                                            Pair(it.getInteger("column"), it.getInteger("row"))
+                                    )
+                                }
                         )
-                    }
                 )
-            )
+            }
         }.onFailure { println("Something went wrong ${it.message}") }
         return result.future()
     }
@@ -125,11 +169,17 @@ class Client(private val name: String, private val port: Int) : AbstractVerticle
             }.onFailure { println("Something went wrong ${it.message}") }
         }
         vertx.setPeriodic(MOUSE_UPDATE_TIME) {
-            webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").send().onSuccess {
-                puzzleBoard.updateMouses(it.bodyAsJsonArray().map { body -> body as JsonObject; Pair(
-                    body.getString("playerID"),
-                    body.getJsonObject("position").let { p -> Pair(p.getInteger("x"), p.getInteger("y")) }
-                ) }.toMap())
+            webClient.get(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").send().onSuccess {response ->
+                val bodyParam = response.bodyAsJsonObject()
+                if (puzzleMousesTimestamp.before(Timestamp.valueOf(bodyParam.getString("timeStamp")))) {
+                    puzzleMousesTimestamp = Timestamp.valueOf(bodyParam.getString("timeStamp"))
+                    puzzleBoard.updateMouses(response.bodyAsJsonArray().map { body ->
+                        body as JsonObject; Pair(
+                            body.getString("playerID"),
+                            body.getJsonObject("position").let { p -> Pair(p.getInteger("x"), p.getInteger("y")) }
+                    )
+                    }.toMap())
+                }
             }
         }
     }
