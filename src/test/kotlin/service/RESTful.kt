@@ -8,7 +8,6 @@ import org.junit.Test
 import service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
 
@@ -28,7 +27,7 @@ class RESTful : AbsServiceTest() {
             Pair(0) { putPuzzleTile(notExistingPuzzle(), notExistingPlayer(), notExistingTile(), 0, 0, 404) },
             Pair(0) { postPlayer(notExistingPuzzle(), 404) },
 
-            Pair(1) { createPuzzle() },
+            Pair(1) { postPuzzle() },
 
             Pair(2) { getPuzzlesIDs(1) },
             Pair(2) { getPuzzleInfo(lastPuzzleID, 200) },
@@ -45,7 +44,7 @@ class RESTful : AbsServiceTest() {
             Pair(3) { putPuzzleTile(lastPuzzleID, notExistingPlayer(), lastTilesIDs.first(), 0, 0, 401) },
             Pair(3) { putPuzzleTile(notExistingPuzzle(), notExistingPlayer(), notExistingTile(), 0, 0, 404) },
 
-            Pair(4) { createPuzzle() },    // N.B. it overwrites lastPuzzleID
+            Pair(4) { postPuzzle() },    // N.B. it overwrites lastPuzzleID
 
             Pair(5) { getPuzzlesIDs(2) },
             Pair(5) { putPuzzleTile(lastPuzzleID, notExistingPlayer(), lastTilesIDs.first(), 0, 0, 401) },
@@ -71,7 +70,7 @@ class RESTful : AbsServiceTest() {
             Pair(0) { getMousePointers(notExistingPuzzle(), 404, 0) },
             Pair(0) { putMousePointers(notExistingPuzzle(), notExistingPlayer(), LocalDateTime.now(), 404) },
 
-            Pair(1) { createPuzzle() },
+            Pair(1) { postPuzzle() },
 
             Pair(2) { getMousePointers(lastPuzzleID, 200, 0) },
             Pair(2) { getMousePointers(notExistingPuzzle(), 404, 0) },
@@ -104,67 +103,10 @@ class RESTful : AbsServiceTest() {
         assert(callbackCount.result) { "All the callback should have been called" }
     }
 
-    /*@Test fun test() {
-        val callbackCount = ResultLock(0, 6)
-
-        val gotPuzzleTiles = Promise.promise<List<String>>()
-        val userJoined = Promise.promise<String>()
-        val gotMousePositions = Promise.promise<Boolean>()
-
-        gotPuzzleTiles.future().onSuccess { tilesIDs ->
-            callbackCount.set { callbackCount.result +1 }
-            this.tilesIDs = tilesIDs
-
-            getPuzzleTile(puzzleID, tilesIDs.first())
-        }
-
-        userJoined.future().onSuccess { playerID ->
-            callbackCount.set { callbackCount.result +1 }
-            this.playerID = playerID
-
-            getMousePosition(puzzleID, 0).onSuccess {
-                gotMousePositions.complete(it)
-            }
-        }
-
-        gotMousePositions.future().onSuccess {
-            callbackCount.set { callbackCount.result +1 }
-
-            putMousePosition(puzzleID, playerID).onSuccess {
-                callbackCount.set { callbackCount.result +1 }
-
-                getMousePosition(puzzleID, 1)
-            }
-        }
-
-        CompositeFuture.all(listOf(gotPuzzleTiles.future(), userJoined.future())).onSuccess {
-            callbackCount.set { callbackCount.result +1 }
-
-            updatePuzzleTile(puzzleID, tilesIDs.first(), playerID)
-        }
-
-        createPuzzle().onSuccess { puzzleID ->
-            callbackCount.set { callbackCount.result +1 }
-            this.puzzleID = puzzleID
-
-            getPuzzlesIDs()
-            getPuzzleInfo(puzzleID)
-            getPuzzleTiles(puzzleID).onComplete {
-                gotPuzzleTiles.complete(it.result())
-            }
-            joinWithUser(puzzleID).onComplete {
-                userJoined.complete(it.result())
-            }
-        }
-
-        callbackCount.deadline(2000)
-        assertEquals("All the callback should have been called", 6, callbackCount.result)
-    }*/
-
     /**
      * Test creation of a new puzzle
      */
-    private fun createPuzzle(): Future<Any> {
+    private fun postPuzzle(): Future<Any> {
         val returns = Promise.promise<Any>()
 
         client.post(Gateway.PORT, "localhost", "/puzzle").send {

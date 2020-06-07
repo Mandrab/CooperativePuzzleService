@@ -2,70 +2,90 @@ package test.kotlin.service
 
 import io.vertx.core.Future
 import io.vertx.core.Promise
-import io.vertx.core.http.HttpClient
+import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
-import junit.framework.Assert.assertEquals
 import org.junit.Assert
 import org.junit.Test
 import service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.test.assertEquals
 
 
 class WebSocket : AbsServiceTest() {
+    private lateinit var puzzleID: String
+    private lateinit var playerID: String
+    private lateinit var webSocket: WebSocket
+    private var expectedMessages: Int = 0
 
-    @Test fun test() {
-        val result = ResultLock(0, 3)
+    @Test fun testMouse() {
+        val callbackCount = ResultLock(0, 3)
 
-        createPuzzle().onSuccess { puzzleID ->
-            result.set { result.result +1 }
-            joinWithUser(puzzleID).onSuccess { player ->
-                result.set { result.result +1 }
-                sendAndReceiveData(puzzleID, player).onComplete { result.set { result.result +1 } }
-            }.onFailure { Assert.fail() }
-        }.onFailure { Assert.fail() }
+        runSequentially(
+            Pair(0) { postPuzzle() },
 
-        result.deadline(2000)
-        assertEquals("Other problems in service prevent from run this",3, result.result)
+            Pair(1) { openWebSocket() },
+
+            Pair(2) {
+                webSocket.binaryMessageHandler {
+                    Assert.assertEquals(expectedMessages, JsonObject(it).getJsonArray("positions").size())
+                    callbackCount.set { callbackCount.result +1 }
+                }
+                Future.succeededFuture<Any>()
+            },
+            Pair(2) { postPlayer() },
+
+            Pair(3) { putPointerPosition(true) },
+
+            Pair(4) { putPointerPosition() },
+
+            Pair(5) { postPlayer() },
+
+            Pair(6) { putPointerPosition(true) }
+        )
+
+        callbackCount.deadline(2000)
+        assertEquals(3, callbackCount.result, "All the callback should have been called")
     }
 
-    private fun sendAndReceiveData(puzzleID: String, playerID: String): Future<Boolean> {
-        val result = Promise.promise<Boolean>()
+    private fun openWebSocket(): Future<Any> {
+        val result = Promise.promise<Any>()
 
-        val client: HttpClient = vertx.createHttpClient()
-        val path = "/puzzle/${puzzleID}/mouses"
-
-        client.webSocket(Gateway.PORT, "localhost", path) {
-            val msg = JsonObject().put("timeStamp", timeStamp()).put("playerToken", playerID).put("position", JsonObject().put("x", 50).put("y", 60))
-
-            it.result().writeBinaryMessage(msg.toBuffer())
-
-            it.result().binaryMessageHandler { buffer ->
-                assert(buffer.toJsonObject() == msg)
-                result.complete(true)
-            }
+        vertx.createHttpClient().webSocket(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses") {
+            webSocket = it.result()
+            result.complete()
         }
         return result.future()
     }
 
-    private fun createPuzzle(): Future<String> {
-        val returns = Promise.promise<String>()
+    private fun postPuzzle(): Future<Any> {
+        val returns = Promise.promise<Any>()
 
         client.post(Gateway.PORT, "localhost", "/puzzle").send {
-            val body = it.result().bodyAsJsonObject()
-            returns.complete(body.getString("puzzleID"))
+            puzzleID = it.result().bodyAsJsonObject().getString("puzzleID")
+            returns.complete()
         }
         return returns.future()
     }
 
-    private fun joinWithUser(puzzleID: String): Future<String> {
-        val playerID = "Marcantonio"
-        val result = Promise.promise<String>()
+    private fun postPlayer(): Future<Any> {
+        val result = Promise.promise<Any>()
 
-        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").sendJson(
-            JsonObject().put("playerID", playerID)
-        ) { result.complete(it.result().bodyAsJsonObject().getString("playerToken")) }
+        client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").send() {
+            playerID = it.result().bodyAsJsonObject().getString("playerToken")
+            result.complete()
+        }
         return result.future()
+    }
+
+    private fun putPointerPosition(incPointerCounter: Boolean = false): Future<Any> {
+        val message = JsonObject().put("timeStamp", timeStamp()).put("playerToken", playerID).put("position",
+            JsonObject().put("x", 50).put("y", 60))
+
+        webSocket.writeBinaryMessage(message.toBuffer())
+        if (incPointerCounter) expectedMessages++
+
+        return Future.succeededFuture()
     }
 
     private fun timeStamp() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))

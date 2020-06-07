@@ -2,16 +2,25 @@ package service
 
 import io.vertx.core.Vertx
 import io.vertx.core.http.ServerWebSocket
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import service.db.DBConnector
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+
 object WebSocket {
 
     internal fun webSocketHandler(ws: ServerWebSocket, vertx: Vertx) {
         when (ws.path()) {
-            in Regex("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> mouseHandler(ws, vertx)
+            in Regex("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> {
+                val puzzleID = ws.path().removeSurrounding("/puzzle/", "/mouses")
+
+                if (DBConnector.getPuzzlePlayers(puzzleID).all { it.socketHandlerID == null }) {
+                    vertx.setPeriodic(300) { sendPositions(puzzleID, vertx) }
+                }
+                mouseHandler(puzzleID, ws, vertx)
+            }
             else -> {
                 println("Socket connection attempt rejected")
                 ws.reject()
@@ -21,28 +30,47 @@ object WebSocket {
 
     private operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
 
-    private fun mouseHandler(ws: ServerWebSocket, vertx: Vertx) {
+    private fun mouseHandler(puzzleID: String, ws: ServerWebSocket, vertx: Vertx) {
         ws.binaryMessageHandler {
             val jObject = it.toJsonObject()
-            if (listOf("playerToken", "position") !in jObject) return@binaryMessageHandler
+
+            if (listOf("timeStamp", "playerToken", "position") !in jObject) return@binaryMessageHandler
             val position = jObject.getJsonObject("position")
             if (listOf("x", "y") !in position) return@binaryMessageHandler
 
-            val puzzleID = ws.path().removeSurrounding("/puzzle/", "/mouses")
             if (puzzleID !in DBConnector.getPuzzlesIDs()) return@binaryMessageHandler
 
-            val playerToken = jObject.getString("playerToken")
-            val x = position.getInteger("x")
-            val y = position.getInteger("y")
             val timestamp = jObject.getString("timeStamp")?.let { timestamp ->
                 LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
             }!!
+            val playerToken = jObject.getString("playerToken")
             val playerInfo = DBConnector.getPuzzlePlayers(puzzleID).firstOrNull { it.playerID == playerToken } ?: return@binaryMessageHandler
+
             if (playerInfo.timeStamp != null && timestamp.isBefore(playerInfo.timeStamp)) return@binaryMessageHandler
+
+            val x = position.getInteger("x")
+            val y = position.getInteger("y")
             DBConnector.newPosition(puzzleID, playerToken, x, y, timestamp)
 
             DBConnector.playerWS(puzzleID, jObject.getString("playerToken"), ws.binaryHandlerID())
-            DBConnector.playersWS(puzzleID).forEach { id -> vertx.eventBus().send(id, it) }
+        }
+    }
+
+    private fun sendPositions(puzzleID: String, vertx: Vertx) {
+        val players = DBConnector.getPuzzlePlayers(puzzleID)
+
+        val message = JsonObject()
+            .put("timeStamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+            .put("positions", JsonArray().apply {
+                players.filter { it.lastPosition != null }.map { playerInfo ->
+                    JsonObject().put("playerID", playerInfo.playerID).put(
+                        "position",
+                        JsonObject().put("x", playerInfo.lastPosition!!.first).put("y", playerInfo.lastPosition.second)
+                    )
+                }.forEach { add(it) }
+            })
+        players.filter { it.socketHandlerID != null }.forEach { player ->
+            vertx.eventBus().send(player.socketHandlerID, message.toBuffer())
         }
     }
 

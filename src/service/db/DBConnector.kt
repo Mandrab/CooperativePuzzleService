@@ -45,8 +45,7 @@ object DBConnector {
 
     @Synchronized fun getPuzzlePlayers(puzzleID: String): List<PlayerInfo> {
         val file = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }
-        return file?.readLines()?.map {
-            PlayerInfo.parse(JsonObject(it)) } ?: emptyList()
+        return file?.readLines()?.map { PlayerInfo.parse(JsonObject(it)) } ?: emptyList()
     }
 
     fun isComplete(puzzleID: String): Boolean = File(PUZZLES_LIST_FILE).readLines()
@@ -129,7 +128,7 @@ object DBConnector {
                         playerID -> PlayerInfo(it.playerID, socketHandlerID ?: it.socketHandlerID, it.lastPosition, it.timeStamp)
                         else -> it
                     }.toJson().encode()
-            }
+            } + System.lineSeparator()
         )
         return true
     }

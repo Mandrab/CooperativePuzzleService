@@ -7,10 +7,10 @@ import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
 import org.junit.After
 import org.junit.Before
-import org.junit.BeforeClass
 import service.Gateway
 import java.io.File
 import kotlin.random.Random
+
 
 abstract class AbsServiceTest {
     protected val vertx: Vertx = Vertx.vertx()
