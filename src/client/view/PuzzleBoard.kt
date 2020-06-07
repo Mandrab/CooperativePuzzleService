@@ -28,17 +28,12 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
 
         getRootPane().glassPane = pointerPane
 
-        /*add(JTextField("Players Name:").apply { isEditable = false }, gbc)
-        val playerName = JTextField("")
-        add(playerName)*/
-
         add(JButton("Start game").apply { addActionListener {
             this@PuzzleBoard.remove(this)
 
             status = Status.STARTED
             tiles?.let { paintPuzzle() }
 
-            //namePlayer = if(playerName.text!=null) playerName.text else "Player"+ Random.nextInt(100)
             client.joinGame()
         } })
 
@@ -100,7 +95,6 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         }
         pointerPane.buttons = buttons
 
-        setLocationRelativeTo(null)
         pack()
     }
 }

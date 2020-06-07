@@ -8,8 +8,9 @@ fun main() {
 
     val ready = Promise.promise<Void>()
     ready.future().onSuccess {
-        vertx.deployVerticle(Client("marco", Gateway.PORT))
-        vertx.deployVerticle(Client("giovanni", Gateway.PORT))
+        vertx.deployVerticle(Client(Gateway.PORT)).onSuccess {
+            vertx.deployVerticle(Client(Gateway.PORT))
+        }
     }
     vertx.deployVerticle(Gateway(ready))
 }

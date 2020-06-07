@@ -132,7 +132,7 @@ class RESTful : AbsServiceTest() {
         val result = Promise.promise<Any>()
         client.get(Gateway.PORT, "localhost", "/puzzle").send {
             assert(it.succeeded())
-            assertEquals(expectedSize, it.result().bodyAsJsonObject().getJsonArray("IDs").size())
+            assertEquals(expectedSize, it.result().bodyAsJsonObject().getJsonArray("puzzles").size())
             result.complete()
         }
         return result.future()
