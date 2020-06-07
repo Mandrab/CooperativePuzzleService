@@ -102,7 +102,7 @@ object DBConnector {
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
         var playerID: String
         do playerID = Random.nextInt(0, Int.MAX_VALUE).toString()
-        while(lines.contains(playerID))
+        while(lines.any { it.contains(playerID) })
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).appendText(PlayerInfo(playerID).toJson().encode() + System.lineSeparator())
         return playerID
     }
@@ -116,7 +116,7 @@ object DBConnector {
                     playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(x, y), timestamp)
                     else -> it
                 }.toJson().encode()
-            })
+            } + System.lineSeparator())
     }
 
     @Synchronized fun playerWS(puzzleID: String, playerID: String, socketHandlerID: String? = null): Boolean {

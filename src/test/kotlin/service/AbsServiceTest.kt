@@ -5,7 +5,9 @@ import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
+import org.junit.After
 import org.junit.Before
+import org.junit.BeforeClass
 import service.Gateway
 import java.io.File
 import kotlin.random.Random
@@ -38,6 +40,13 @@ abstract class AbsServiceTest {
     protected fun notExistingTile() = Random.nextInt().toString()
 
     protected fun notExistingPlayer() = Random.nextBoolean().toString()
+
+    @After fun cleanTrash() {
+        File("trash").apply {
+            deleteRecursively()
+            mkdir()
+        }
+    }
 
     @Before fun startService() {
         File("trash").apply {
