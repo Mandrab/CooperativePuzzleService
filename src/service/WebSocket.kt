@@ -32,7 +32,7 @@ object WebSocket {
             val playerToken = jObject.getString("playerToken")
             val x = position.getInteger("x")
             val y = position.getInteger("y")
-            DBConnector.newPosition(puzzleID, playerToken, x, y)
+            // TODO DBConnector.newPosition(puzzleID, playerToken, x, y)
 
             DBConnector.playerWS(puzzleID, jObject.getString("playerToken"), ws.binaryHandlerID())
             DBConnector.playersWS(puzzleID).forEach { id -> vertx.eventBus().send(id, it) }

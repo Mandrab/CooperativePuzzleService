@@ -8,6 +8,8 @@ import io.vertx.ext.web.client.WebClient
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
@@ -76,7 +78,7 @@ class TestRESTful {
     private fun getPuzzlesIDs() {
         client.get(Gateway.PORT, "localhost", "/puzzle").send {
             assert(it.succeeded())
-            assertFalse(it.result().bodyAsJsonArray().isEmpty)
+            assertFalse(it.result().bodyAsJsonObject().getJsonArray("IDs").isEmpty)
         }
     }
 
@@ -87,7 +89,10 @@ class TestRESTful {
         client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID").send {
             assert(it.succeeded())
 
-            val body = it.result().bodyAsJsonObject()
+            assert(it.result().bodyAsJsonObject().containsKey("timeStamp"))
+            assert(it.result().bodyAsJsonObject().containsKey("info"))
+
+            val body = it.result().bodyAsJsonObject().getJsonObject("info")
 
             assert(body.containsKey("imageURL"))
             assert(body.containsKey("columns"))
@@ -114,7 +119,10 @@ class TestRESTful {
         client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/tiles").send {
             assert(it.succeeded())
 
-            val jArray = it.result().bodyAsJsonArray().map { t -> t as JsonObject }
+            assert(it.result().bodyAsJsonObject().containsKey("timeStamp"))
+            assert(it.result().bodyAsJsonObject().containsKey("tiles"))
+
+            val jArray = it.result().bodyAsJsonObject().getJsonArray("tiles").map { t -> t as JsonObject }
 
             assert(jArray.all { t -> t.containsKey("tileID") })
             assert(jArray.all { t -> t.containsKey("column") })
@@ -200,14 +208,16 @@ class TestRESTful {
         val result = Promise.promise<Boolean>()
 
         client.put(Gateway.PORT, "localhost", "/puzzle/${puzzleID}a/mouses").sendJsonObject(
-            JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
+            JsonObject().put("timeStamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+                .put("playerToken", playerID).put("position", JsonObject().put("x", 5).put("y", 5))
         ) {
             assertEquals(404, it.result().statusCode())
         }
         val notExpectedCode = AtomicInteger()
         for (i in 0..1) {
             client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").sendJsonObject(
-                JsonObject().put("playerToken", playerID).put("column", 5).put("row", 5)
+                JsonObject().put("timeStamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+                    .put("playerToken", playerID).put("position", JsonObject().put("x", 5).put("y", 5))
             ) {
                 synchronized(notExpectedCode) {
                     val code = it.result().statusCode()
@@ -220,6 +230,12 @@ class TestRESTful {
                     } else fail()
                 }
             }
+        }
+        result.future().onComplete {
+            client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").sendJsonObject(
+                JsonObject().put("timeStamp", LocalDateTime.now().minusDays(5).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")))
+                    .put("playerToken", playerID).put("position", JsonObject().put("x", 5).put("y", 5))
+            ) { assertEquals(409, it.result().statusCode()) }
         }
         return result.future()
     }
@@ -236,7 +252,7 @@ class TestRESTful {
         client.get(Gateway.PORT, "localhost", "/puzzle/$puzzleID/mouses").send {
             assertEquals(200, it.result().statusCode())
             result.complete(true)
-            assertEquals(expectedResult, it.result().bodyAsJsonArray().size())
+            assertEquals(expectedResult, it.result().bodyAsJsonObject().getJsonArray("positions").size())
         }
         return result.future()
     }

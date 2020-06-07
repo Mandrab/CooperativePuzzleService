@@ -3,6 +3,7 @@ package service.db
 import io.vertx.core.json.JsonObject
 import java.io.File
 import java.io.IOException
+import java.time.LocalDateTime
 import javax.imageio.ImageIO
 import kotlin.random.Random
 
@@ -106,13 +107,13 @@ object DBConnector {
         return playerID
     }
 
-    @Synchronized fun newPosition(puzzleID: String, playerID: String, x: Int, y: Int) {
-        if (!getPuzzlesIDs().contains(puzzleID)) return
+    @Synchronized fun newPosition(puzzleID: String, playerID: String, x: Int, y: Int, timestamp: LocalDateTime) {
+        if (puzzleID !in getPuzzlesIDs()) return
         val lines = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).takeIf { it.exists() }?.readLines() ?: emptyList()
         File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).writeText(lines.map { PlayerInfo.parse(JsonObject(it)) }
             .joinToString(System.lineSeparator()) {
                 when (it.playerID) {
-                    playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(x, y))
+                    playerID -> PlayerInfo(it.playerID, it.socketHandlerID, Pair(x, y), timestamp)
                     else -> it
                 }.toJson().encode()
             })
@@ -125,7 +126,7 @@ object DBConnector {
             File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX).readLines().map { PlayerInfo.parse(JsonObject(it)) }
                 .joinToString(System.lineSeparator()) {
                     when (it.playerID) {
-                        playerID -> PlayerInfo(it.playerID, socketHandlerID ?: it.socketHandlerID)
+                        playerID -> PlayerInfo(it.playerID, socketHandlerID ?: it.socketHandlerID, it.lastPosition, it.timeStamp)
                         else -> it
                     }.toJson().encode()
             }

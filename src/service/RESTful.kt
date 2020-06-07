@@ -1,13 +1,15 @@
 package service
 
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 import service.db.DBConnector
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.random.Random
+
 
 object RESTful {
     private const val IMAGE_URL = "bletchley-park-mansion.jpg"
@@ -25,12 +27,12 @@ object RESTful {
             )
         } while(!accomplished)
 
-        val jResponse = JsonObject().put("puzzleID", puzzleID).put("imageURL", "res${File.separator}$IMAGE_URL").put("columns", GRID_COL_COUNT)
-            .put("rows", GRID_ROW_COUNT).encode()
-
-        val response = ctx.response()
-        response.statusCode = 201
-        response.putHeader("content-type", "application/json").end(jResponse)
+        ctx.response().apply {
+            statusCode = 201
+            putHeader("content-type", "application/json")
+            end(JsonObject().put("puzzleID", puzzleID).put("imageURL", "res${File.separator}$IMAGE_URL")
+                    .put("columns", GRID_COL_COUNT).put("rows", GRID_ROW_COUNT).encode())
+        }
     }
 
     internal fun availablePuzzles(ctx: RoutingContext) {
@@ -39,44 +41,50 @@ object RESTful {
 
         val response: HttpServerResponse = ctx.response()
         response.statusCode = 200
-        response.putHeader("content-type", "application/json").end(jArray.encode())
+        response.putHeader("content-type", "application/json").end(
+            JsonObject().apply {
+                put("timeStamp", timeStamp())
+                put("IDs", jArray)
+            }.encode()
+        )
     }
 
     internal fun puzzleInfo(ctx: RoutingContext) {
-        if (!ctx.request().params().contains("puzzleID")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
-        if (!DBConnector.getPuzzlesIDs().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
-
-        val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID)!!
-        val jObject = JsonObject().apply {
-            put("imageURL", puzzleInfo.imageURL)
-            put("columns", puzzleInfo.columnsCount)
-            put("rows", puzzleInfo.rowsCount)
-
-            val tiles = DBConnector.getPuzzleTiles(puzzleID)
-            put("status", if (tiles.all { it.currentPosition == it.originalPosition }) "completed" else "started")
-
-            val jArray = JsonArray()
-            tiles.map {
-                JsonObject().apply {
-                    put("tileID", it.tileID)
-                    put("imageURL", it.tileImageURL)
-                    put("column", it.currentPosition.first)
-                    put("row", it.currentPosition.second)
-                }
-            }.forEach { jArray.add(it) }
-            put("tiles", jArray)
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID) ?: let {
+            ctx.response().apply { statusCode = 404 }.end()
+            return
         }
-        val response = ctx.response()
-        response.putHeader("content-type", "application/json").end(jObject.encode())
+
+        ctx.response().apply {
+            statusCode = 200
+            putHeader("content-type", "application/json")
+        }.end(
+            JsonObject().put("timeStamp", timeStamp()).put("info", JsonObject().apply {
+                put("imageURL", puzzleInfo.imageURL)
+                put("columns", puzzleInfo.columnsCount)
+                put("rows", puzzleInfo.rowsCount)
+
+                val tiles = DBConnector.getPuzzleTiles(puzzleID)
+                put("status", if (tiles.all { it.currentPosition == it.originalPosition }) "completed" else "started")
+
+                val jArray = JsonArray()
+                tiles.map {
+                    JsonObject().apply {
+                        put("tileID", it.tileID)
+                        put("imageURL", it.tileImageURL)
+                        put("column", it.currentPosition.first)
+                        put("row", it.currentPosition.second)
+                    }
+                }.forEach { jArray.add(it) }
+                put("tiles", jArray)
+            }).encode()
+        )
     }
 
     internal fun getTiles(ctx: RoutingContext) {
-        if (!ctx.request().params().contains("puzzleID")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
-        if (!DBConnector.getPuzzlesIDs().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
 
         val jArray = JsonArray()
         DBConnector.getPuzzleTiles(puzzleID).map {
@@ -88,16 +96,15 @@ object RESTful {
             }
         }.forEach { jArray.add(it) }
 
-        val response = ctx.response()
-        response.statusCode = 200
-        response.putHeader("content-type", "application/json").end(jArray.encode())
+        ctx.response().apply {
+            statusCode = 200
+            putHeader("content-type", "application/json")
+        }.end(JsonObject().put("timeStamp", timeStamp()).put("tiles", jArray).encode())
     }
 
     internal fun getTile(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), null, "puzzleID", "tileID")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
-        val tileID = ctx.request().getParam("tileID")
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        val tileID = ctx.request().getParam("tileID") ?: return
 
         val tile = DBConnector.getPuzzleTiles(puzzleID).firstOrNull { it.tileID == tileID }
         tile ?: let { ctx.response().apply { statusCode = 404 }.end(); return }
@@ -106,6 +113,7 @@ object RESTful {
         response.statusCode = 200
         response.putHeader("content-type", "application/json").end(
             JsonObject().apply {
+                put("timeStamp", timeStamp())
                 put("tileID", tile.tileID)
                 put("column", tile.currentPosition.first)
                 put("row", tile.currentPosition.second)
@@ -114,17 +122,17 @@ object RESTful {
     }
 
     internal fun updateTilePosition(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), ctx.bodyAsJson, "puzzleID", "tileID", "playerToken","newColumn", "newRow")) return
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        val tileID = ctx.request().getParam("tileID") ?: return
 
-        val puzzleID = ctx.request().getParam("puzzleID")
-        val tileID = ctx.request().getParam("tileID")
+        if (!ctx.bodyAsJson.recursiveContainsKeys("playerToken", "newColumn", "newRow")) return
 
-        if (!DBConnector.getPuzzlesIDs().contains(puzzleID) || DBConnector.getPuzzleTiles(puzzleID).all { it.tileID != tileID }) {
+        if (puzzleID !in DBConnector.getPuzzlesIDs() || DBConnector.getPuzzleTiles(puzzleID).all { it.tileID != tileID }) {
             ctx.response().apply { statusCode = 404 }.end()
             return
         }
 
-        val playerID = ctx.bodyAsJson.getString("playerToken")
+        val playerID = ctx.bodyAsJson.getString("playerToken") ?: return
         if (DBConnector.getPuzzlePlayers(puzzleID).all { it.playerID != playerID }) {
             ctx.response().apply { statusCode = 401 }.end()
             return
@@ -146,40 +154,44 @@ object RESTful {
     }
 
     internal fun newPlayer(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), null, "puzzleID")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
-        if (!DBConnector.getPuzzlesIDs().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
 
         val playerID = DBConnector.addPlayer(puzzleID)!!
-        ctx.response().putHeader("content-type", "application/json").apply { statusCode = 201 }
-            .end(JsonObject().put("playerToken", playerID).encode())
+        ctx.response().apply {
+            statusCode = 201
+            putHeader("content-type", "application/json")
+        }.end(JsonObject().put("playerToken", playerID).encode())
     }
 
     internal fun positionSubmission(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), ctx.bodyAsJson, "puzzleID", "playerToken", "position")) return
+        if (!ctx.bodyAsJson.recursiveContainsKeys("timeStamp", "playerToken", "position", "x", "y")) return
 
-        val position = ctx.bodyAsJson.getJsonObject("position")
-        if (!position.containsKey("x") || !position.containsKey("y")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
         if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
 
         val playerToken = ctx.bodyAsJson.getString("playerToken")
-        val playerInfo = DBConnector.getPuzzlePlayers(puzzleID).firstOrNull { it.playerID == playerToken }
+        val playerInfo = DBConnector.getPuzzlePlayers(puzzleID).firstOrNull { it.playerID == playerToken } ?: let {
+            ctx.response().apply { statusCode = 404 }.end(); return
+        }
+        val timestamp = ctx.bodyAsJson.getString("timeStamp")?.let {
+            LocalDateTime.parse(it, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
+        }!!
+        if (playerInfo.timeStamp != null && timestamp.isBefore(playerInfo.timeStamp)) {
+            ctx.response().apply { statusCode = 409 }.end(); return
+        }
 
+        val position = ctx.bodyAsJson.getJsonObject("position")
         val x = position.getInteger("x")
         val y = position.getInteger("y")
-        DBConnector.newPosition(puzzleID, playerToken, x, y)
+        DBConnector.newPosition(puzzleID, playerToken, x, y, timestamp)
 
-        ctx.response().apply { statusCode = playerInfo?.lastPosition?.let { 200 } ?: 201 }.end()
+        ctx.response().apply { statusCode = playerInfo.lastPosition?.let { 200 } ?: 201 }.end()
     }
 
     internal fun getPositions(ctx: RoutingContext) {
-        if (!requestContains(ctx.request(), null, "puzzleID")) return
-
-        val puzzleID = ctx.request().getParam("puzzleID")
-        if (!DBConnector.getPuzzlesIDs().contains(puzzleID)) { ctx.response().apply { statusCode = 404 }.end(); return }
+        val puzzleID = ctx.request().getParam("puzzleID") ?: return
+        if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
 
         val jArray = JsonArray()
         DBConnector.getPuzzlePlayers(puzzleID).filter { it.lastPosition != null }.forEach { jArray.add(
@@ -187,9 +199,30 @@ object RESTful {
                 JsonObject().put("x", it.lastPosition!!.first).put("y", it.lastPosition.second)
             )) }
 
-        ctx.response().apply { statusCode = 200 }.end(jArray.encode())
+        ctx.response().apply { statusCode = 200 }.end(
+            JsonObject().put("timeStamp", timeStamp()).put("positions", jArray).encode()
+        )
     }
 
-    private fun requestContains(request: HttpServerRequest, body: JsonObject?, vararg keys: String): Boolean =
-        keys.all { request.params().contains(it) || body?.containsKey(it) ?: false }
+    private fun timeStamp() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
+}
+
+fun JsonObject.recursiveContainsKeys(vararg keys: String): Boolean {
+    return keys.all { key -> containsKey(key) || asSequence().any {
+        when (it.value) {
+            is JsonObject -> (it.value as JsonObject).recursiveContainsKeys(key)
+            is JsonArray -> (it.value as JsonArray).recursiveContainsKeys(key)
+            else -> false
+        }
+    } }
+}
+
+fun JsonArray.recursiveContainsKeys(vararg keys: String): Boolean {
+    return keys.all { key -> asSequence().any {
+        when (it) {
+            is JsonObject -> it.recursiveContainsKeys(key)
+            is JsonArray -> it.recursiveContainsKeys(key)
+            else -> false
+        }
+    } }
 }
