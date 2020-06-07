@@ -10,6 +10,8 @@ import junit.framework.Assert.assertEquals
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class TestWebSocket {
     private val vertx = Vertx.vertx()
@@ -37,7 +39,7 @@ class TestWebSocket {
         val path = "/puzzle/${puzzleID}/mouses"
 
         client.webSocket(Gateway.PORT, "localhost", path) {
-            val msg = JsonObject().put("playerToken", playerID).put("position", JsonObject().put("x", 50).put("y", 60))
+            val msg = JsonObject().put("timeStamp", timeStamp()).put("playerToken", playerID).put("position", JsonObject().put("x", 50).put("y", 60))
 
             it.result().writeBinaryMessage(msg.toBuffer())
 
@@ -68,6 +70,8 @@ class TestWebSocket {
         ) { result.complete(it.result().bodyAsJsonObject().getString("playerToken")) }
         return result.future()
     }
+
+    private fun timeStamp() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
 
     @Before fun startService() {
         val customLock = ResultLock(false)

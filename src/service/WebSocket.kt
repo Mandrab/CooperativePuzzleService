@@ -4,6 +4,8 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.ServerWebSocket
 import io.vertx.core.json.JsonObject
 import service.db.DBConnector
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object WebSocket {
 
@@ -32,7 +34,10 @@ object WebSocket {
             val playerToken = jObject.getString("playerToken")
             val x = position.getInteger("x")
             val y = position.getInteger("y")
-            // TODO DBConnector.newPosition(puzzleID, playerToken, x, y)
+            val timestamp = jObject.getString("timeStamp")?.let { timestamp ->
+                LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
+            }!!
+            DBConnector.newPosition(puzzleID, playerToken, x, y, timestamp)
 
             DBConnector.playerWS(puzzleID, jObject.getString("playerToken"), ws.binaryHandlerID())
             DBConnector.playersWS(puzzleID).forEach { id -> vertx.eventBus().send(id, it) }
