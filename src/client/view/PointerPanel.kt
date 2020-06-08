@@ -3,11 +3,11 @@ package client.view
 import java.awt.Color
 import java.awt.Graphics2D
 import javax.swing.JComponent
-/*
-This class represent a JComponent.
-This class is used to draw the pointer on the puzzle in a certain position.
-
-@author Baldini Paolo, Battistini Ylenia
+/**
+ * This class represent a JComponent.
+ * This class is used to draw the pointer on the puzzle in a certain position.
+ *
+ * @author Baldini Paolo, Battistini Ylenia
  */
 class PointerPanel : JComponent() {
     var buttons: List<TileButton> = emptyList()
