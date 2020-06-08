@@ -1,7 +1,10 @@
 package test.kotlin.service
 
+import io.vertx.core.Vertx
+import io.vertx.core.http.HttpClient
 import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.web.client.WebClient
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import service.Gateway
@@ -24,24 +27,26 @@ class ConcurrentPlay : AbsServiceTest() {
         postPuzzle().thenAccept {
             for (i in 0..2) {
                 Executors.newCachedThreadPool().execute {
-                    postPlayer().thenAccept {
-                        nonBlockingLongRunningPuts(it, 100)
+                    val wc = WebClient.create(Vertx.vertx())
+                    postPlayer(wc).thenAccept {
+                        nonBlockingLongRunningPuts(wc, it, 100)
                     }
                 }
             }
 
             for (i in 0..2) {
                 Executors.newCachedThreadPool().execute {
-                    postPlayer().thenAccept { player ->
+                    val wc = WebClient.create(Vertx.vertx())
+                    postPlayer(wc).thenAccept { player ->
                         openWebSocket().thenAccept {
-                            nonBlockingLongRunningPuts(it as WebSocket, player, 100)
+                            nonBlockingLongRunningPuts(wc, it as WebSocket, player, 100)
                         }
                     }
                 }
             }
         }
 
-        callbackCount.deadline(2000)
+        callbackCount.deadline(3000)
         assertEquals("All the callback should have been called", 600, callbackCount.result)
         assert(positionUpdates > 0)
     }
@@ -59,7 +64,7 @@ class ConcurrentPlay : AbsServiceTest() {
         return returns
     }
 
-    private fun postPlayer(): CompletableFuture<String> {
+    private fun postPlayer(client: WebClient): CompletableFuture<String> {
         val result = CompletableFuture<String>()
 
         client.post(Gateway.PORT, "localhost", "/puzzle/$puzzleID/user").send {
@@ -71,7 +76,7 @@ class ConcurrentPlay : AbsServiceTest() {
         return result
     }
 
-    private fun putPuzzleTile(puzzleID: String, playerID: String, column: Int, row: Int): CompletableFuture<Any> {
+    private fun putPuzzleTile(client: WebClient, puzzleID: String, playerID: String, column: Int, row: Int): CompletableFuture<Any> {
         val result = CompletableFuture<Any>()
 
         client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/0").sendJsonObject(
@@ -104,7 +109,7 @@ class ConcurrentPlay : AbsServiceTest() {
         return CompletableFuture.completedFuture(Unit)
     }
 
-    private fun nonBlockingLongRunningPuts(playerID: String, dec: Int): CompletableFuture<Any> {
+    private fun nonBlockingLongRunningPuts(client: WebClient, playerID: String, dec: Int): CompletableFuture<Any> {
         if (dec == 0) return CompletableFuture.completedFuture(Unit)
         val result = CompletableFuture<Any>()
         client.put(Gateway.PORT, "localhost", "/puzzle/$puzzleID/0").sendJsonObject(
@@ -113,7 +118,7 @@ class ConcurrentPlay : AbsServiceTest() {
             assert (it.succeeded())
             assertNotEquals(500, it.result().statusCode())
             assertEquals(200, it.result().statusCode())
-            nonBlockingLongRunningPuts(playerID, dec -1).thenAccept {
+            nonBlockingLongRunningPuts(client, playerID, dec -1).thenAccept {
                 callbackCount.set { callbackCount.result +1 }
                 result.complete(Unit)
             }
@@ -121,11 +126,11 @@ class ConcurrentPlay : AbsServiceTest() {
         return result
     }
 
-    private fun nonBlockingLongRunningPuts(ws: WebSocket, playerID: String, dec: Int): CompletableFuture<Any> {
+    private fun nonBlockingLongRunningPuts(wc: WebClient, ws: WebSocket, playerID: String, dec: Int): CompletableFuture<Any> {
         if (dec == 0) return CompletableFuture.completedFuture(Unit)
         val result = CompletableFuture<Any>()
-        putPuzzleTile(puzzleID, playerID, Random.nextInt(4), Random.nextInt(2)).thenAccept {
-            nonBlockingLongRunningPuts(ws, playerID, dec -1).thenAccept {
+        putPuzzleTile(wc, puzzleID, playerID, Random.nextInt(4), Random.nextInt(2)).thenAccept {
+            nonBlockingLongRunningPuts(wc, ws, playerID, dec -1).thenAccept {
                 callbackCount.set { callbackCount.result +1 }
                 result.complete(Unit)
             }
