@@ -7,7 +7,14 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
 
+/*
+This class represent a puzzle board. This class paint puzzle and his tiles.
+@param rows, puzzle rows
+@param columns, puzzle columns
+@param client, represent Client
 
+@author Baldini Paolo, Battistini Ylenia
+ */
 class PuzzleBoard(private val rows: Int, private val columns: Int, private val client: Client) : JFrame() {
     private val selectionManager: SelectionManager = SelectionManager()
     private val pointerPane = PointerPanel()
@@ -43,6 +50,9 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         pack()
     }
 
+    /*
+    This method check if there are different between tile position then update position and repaint puzzle.
+     */
     fun updateTiles(tilePositions: Map<String, Pair<Int,Int>>) = SwingUtilities.invokeAndWait {
         tiles ?: return@invokeAndWait
 
@@ -62,10 +72,18 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
 
     fun updateMouse(x: Int, y: Int) = client.mouseMovement(x, y)
 
+    /*
+    This method paint mouse in a specified position.
+
+    @param mousePositions, represent a position.
+     */
     fun updateMouses(mousePositions: Map<String, Pair<Int, Int>>) = SwingUtilities.invokeAndWait {
         pointerPane.drawPointers(mousePositions)
     }
 
+    /*
+    This method, if the puzzle is complete create a JOptionPane.
+     */
     fun complete() = SwingUtilities.invokeAndWait  {
         status = Status.COMPLETED
         paintPuzzle()
@@ -75,6 +93,10 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
         }.isVisible = true
     }
 
+    /*
+    This method paint puzzle on board.
+    Foreach tiles it create a new button and set an action listener.
+     */
     private fun paintPuzzle() {
         contentPane.removeAll()
 

@@ -8,9 +8,17 @@ import service.db.DBConnector
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-
+/**
+ * This object represent a webSocket.
+ * This is an alternative to Rest API polling.
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 object WebSocket {
 
+    /**
+     * This function verifies that the request matching with pattern. If so, call the handler.
+     */
     internal fun webSocketHandler(ws: ServerWebSocket, vertx: Vertx) {
         when (ws.path()) {
             in Regex("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> {
@@ -19,7 +27,7 @@ object WebSocket {
                 if (DBConnector.getPuzzlePlayers(puzzleID).all { it.socketHandlerID == null }) {
                     vertx.setPeriodic(300) { sendPositions(puzzleID, vertx) }
                 }
-                mouseHandler(puzzleID, ws, vertx)
+                mouseHandler(puzzleID, ws)
             }
             else -> {
                 println("Socket connection attempt rejected")
@@ -30,7 +38,12 @@ object WebSocket {
 
     private operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
 
-    private fun mouseHandler(puzzleID: String, ws: ServerWebSocket, vertx: Vertx) {
+    /**
+     * This is the handler function.
+     * This function extracts the information from the jsonObject and,
+     * if the timestamp is more updated than the one I had updates the position
+     */
+    private fun mouseHandler(puzzleID: String, ws: ServerWebSocket) {
         ws.binaryMessageHandler {
             val jObject = it.toJsonObject()
 

@@ -12,8 +12,6 @@ import kotlin.random.Random
  * This class *simulate* a db-connector to store files on a DB.
  * Truly, it uses file storage.
  *
- * TODO use it as monitor ?
- *
  * @author Paolo Baldini
  */
 object DBConnector {
