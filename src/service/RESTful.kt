@@ -10,12 +10,20 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
-
+/**
+ * This class contains all the route handlers provided by the gateway.
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 object RESTful {
     private const val IMAGE_URL = "bletchley-park-mansion.jpg"
     private const val GRID_COL_COUNT = 5
     private const val GRID_ROW_COUNT = 3
 
+    /**
+     * This function create a new Puzzle with image, columns and rows.
+     * This is the handler of /puzzle (POST)
+     */
     internal fun newPuzzle(ctx: RoutingContext) {
         var puzzleID: String
         do {
@@ -39,6 +47,10 @@ object RESTful {
         }
     }
 
+    /**
+     * This function check if there is an available puzzle. If there send puzzleID.
+     * This function is handler of /puzzle ( GET).
+     */
     internal fun availablePuzzles(ctx: RoutingContext) {
         val jArray = JsonArray()
         DBConnector.getPuzzlesIDs().mapNotNull { DBConnector.getPuzzleInfo(it) }.forEach {
@@ -54,6 +66,11 @@ object RESTful {
         )
     }
 
+    /**
+     * This function get all puzzle information.
+     * Get puzzleID, imageURL, column, row, status (STARTED or COMPLETED) and get a tile's information.
+     * This is the handler of /puzzle/:puzzleID (GET)
+     */
     internal fun puzzleInfo(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         val puzzleInfo = DBConnector.getPuzzleInfo(puzzleID) ?: let {
@@ -87,6 +104,11 @@ object RESTful {
         )
     }
 
+    /**
+     * This function get all tile's puzzle information
+     * Get tileID, imageURL, column and row.
+     * This is the handler of /puzzle/:puzzleID/tiles (GET)
+     */
     internal fun getTiles(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
@@ -107,6 +129,11 @@ object RESTful {
         }.end(JsonObject().put("timeStamp", timeStamp()).put("tiles", jArray).encode())
     }
 
+    /**
+     * This function get information of a specific tile.
+     * Get timestamp, tileID, column and row.
+     * This is the handler of /puzzle/:puzzleID/:tileID (GET)
+     */
     internal fun getTile(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         val tileID = ctx.request().getParam("tileID") ?: return
@@ -127,6 +154,11 @@ object RESTful {
         )
     }
 
+    /**
+     * This function update position of a specific tile.
+     * The Json contains information about the new positions.
+     * This is the handler of /puzzle/:puzzleID/:tileID (PUT)
+     */
     internal fun updateTilePosition(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         val tileID = ctx.request().getParam("tileID") ?: return
@@ -159,6 +191,11 @@ object RESTful {
         ctx.response().apply { statusCode = 200 }.end()
     }
 
+    /**
+     * This function add a new player in a specific puzzle.
+     * The Json contains information about the puzzleID.
+     * This is the handler of /puzzle/:puzzleID/user (POST)
+     */
     internal fun newPlayer(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
@@ -170,6 +207,11 @@ object RESTful {
         }.end(JsonObject().put("playerToken", playerID).encode())
     }
 
+    /**
+     * This function update mouse position.
+     * The Json contains information about timestamp, playerToken and new mouse position.
+     * This is the handler of /puzzle/:puzzleID/mouses (PUT)
+     */
     internal fun positionSubmission(ctx: RoutingContext) {
         if (!ctx.bodyAsJson.recursiveContainsKeys("timeStamp", "playerToken", "position", "x", "y")) return
 
@@ -195,6 +237,10 @@ object RESTful {
         ctx.response().apply { statusCode = playerInfo.lastPosition?.let { 200 } ?: 201 }.end()
     }
 
+    /**
+     * This function get mouse position for a specific puzzle.
+     * This is the handler of /puzzle/:puzzleID/mouses (GET)
+     */
     internal fun getPositions(ctx: RoutingContext) {
         val puzzleID = ctx.request().getParam("puzzleID") ?: return
         if (puzzleID !in DBConnector.getPuzzlesIDs()) { ctx.response().apply { statusCode = 404 }.end(); return }
