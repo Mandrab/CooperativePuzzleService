@@ -11,6 +11,9 @@ import kotlin.random.Random
 /**
  * This class *simulate* a db-connector to store files on a DB.
  * Truly, it uses file storage.
+ * Each puzzle consists of three main files, the one containing the puzzle information,
+ * the one containing the players and the one containing the tiles for each puzzle.
+ * Whenever information needs to be updated/written, the files are written or read.
  *
  * @author Paolo Baldini
  */

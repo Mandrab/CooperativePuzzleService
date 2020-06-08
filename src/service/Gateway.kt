@@ -5,7 +5,12 @@ import io.vertx.core.Promise
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
 
-
+/**
+ * This class contains all the routes that the service makes available to the client.
+ * For each route its handler is specified
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 class Gateway(private val ready: Promise<Void> = Promise.promise()) : AbstractVerticle() {
 
     override fun start() {
