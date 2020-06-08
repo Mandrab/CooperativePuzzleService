@@ -1,15 +1,23 @@
-import client.Client
+import main.kotlin.client.Client
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
-import service.Gateway
+import main.kotlin.service.Gateway
 
 /**
- * This is main.
- * It create two client and set service ready.
+ * This is main method.
+ * It creates two clients after started the service.
+ *
+ * IMPORTANT: The client downloads tile images from the server, so one needs to be running.
+ * In git repo there's a simple python script that starts a server for this use.
+ * Also a folder named thrash as to be created in project directory.
  *
  * @author Baldini Paolo, Battistini Ylenia
  */
 fun main() {
+    println("IMPORTANT: The client downloads tile images from the server, so one needs to be running.\n" +
+            "In git repo there's a simple python script that starts a server for this use.\n" +
+            "Also a folder named thrash as to be created in project directory.")
+
     val vertx = Vertx.vertx()
 
     val ready = Promise.promise<Void>()

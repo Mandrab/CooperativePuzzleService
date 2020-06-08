@@ -1,9 +1,9 @@
-package client.view
+package main.kotlin.client.view
 
-import client.Client
+import main.kotlin.client.Client
 
 /**
- * This class is a SelectionManager and it check a tiles position to swap.
+ * This class manage swap of two tiles.
  *
  * @author Baldini Paolo, Battistini Ylenia
  */

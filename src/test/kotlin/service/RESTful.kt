@@ -5,12 +5,16 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonObject
 import org.junit.Assert.*
 import org.junit.Test
-import service.Gateway
+import main.kotlin.service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
-
+/**
+ * Tests restful call of the service
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 class RESTful : AbsServiceTest() {
     private lateinit var lastPuzzleID: String
     private lateinit var lastPlayerID: String

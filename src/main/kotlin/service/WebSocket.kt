@@ -1,15 +1,15 @@
-package service
+package main.kotlin.service
 
 import io.vertx.core.Vertx
 import io.vertx.core.http.ServerWebSocket
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import service.db.DBConnector
+import main.kotlin.service.db.DBConnector
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * This object represent a webSocket.
+ * This object contains WebSocket-related methods/handlers.
  * This is an alternative to Rest API polling.
  *
  * @author Baldini Paolo, Battistini Ylenia
@@ -17,7 +17,8 @@ import java.time.format.DateTimeFormatter
 object WebSocket {
 
     /**
-     * This function verifies that the request matching with pattern. If so, call the handler.
+     * If the request match with path pattern, call the handler.
+     * If it's the first WS to open, setup a periodic update for the client
      */
     internal fun webSocketHandler(ws: ServerWebSocket, vertx: Vertx) {
         when (ws.path()) {
@@ -39,9 +40,10 @@ object WebSocket {
     private operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
 
     /**
-     * This is the handler function.
-     * This function extracts the information from the jsonObject and,
-     * if the timestamp is more updated than the one I had updates the position
+     * This is mouse-handler implementation.
+     *
+     * This function extracts the information from the message and,
+     * if the timestamp is newer than the one I had, updates the position
      */
     private fun mouseHandler(puzzleID: String, ws: ServerWebSocket) {
         ws.binaryMessageHandler {
@@ -69,6 +71,9 @@ object WebSocket {
         }
     }
 
+    /**
+     * Send pointers' positions to all connected WS
+     */
     private fun sendPositions(puzzleID: String, vertx: Vertx) {
         val players = DBConnector.getPuzzlePlayers(puzzleID)
 

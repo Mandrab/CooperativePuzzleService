@@ -1,4 +1,4 @@
-package client.view
+package main.kotlin.client.view
 
 import java.awt.Image
 

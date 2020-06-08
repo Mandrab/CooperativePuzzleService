@@ -1,22 +1,26 @@
 package test.kotlin.service
 
 import io.vertx.core.Vertx
-import io.vertx.core.http.HttpClient
 import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
-import service.Gateway
+import main.kotlin.service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import kotlin.random.Random
-import kotlin.test.assertNotEquals
 
-
+/**
+ * Tests multiple players that make call to the service
+ * It's aim to find service faults
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 class ConcurrentPlay : AbsServiceTest() {
     private lateinit var puzzleID: String
     private val callbackCount = ResultLock(0, 600)
@@ -46,7 +50,7 @@ class ConcurrentPlay : AbsServiceTest() {
             }
         }
 
-        callbackCount.deadline(3000)
+        callbackCount.deadline(10000)
         assertEquals("All the callback should have been called", 600, callbackCount.result)
         assert(positionUpdates > 0)
     }

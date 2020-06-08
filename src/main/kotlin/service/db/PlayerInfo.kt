@@ -1,15 +1,16 @@
-package service.db
+package main.kotlin.service.db
 
 import io.vertx.core.json.JsonObject
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
 /**
  * This class represent a player information.
  *
  * @param playerID, id of player
  * @param socketHandlerID, socket handler
- * @param last position, position of player (last update)
- * @param timeStamp, date-time
+ * @param lastPosition, position of player (last update)
+ * @param timeStamp, last update time
  *
  * @author Baldini Paolo, Battistini Ylenia
  */
@@ -31,8 +32,9 @@ data class PlayerInfo(
 
     companion object {
         const val TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+
         /**
-         * This method parse all information from JSonObject
+         * This method parse all information from JSonObject into a PlayerInfo
          */
         fun parse(json: JsonObject): PlayerInfo = PlayerInfo(
             json.getString("id"),

@@ -1,6 +1,6 @@
-package client.view
+package main.kotlin.client.view
 
-import client.Client
+import main.kotlin.client.Client
 import java.awt.Color
 import java.awt.GridLayout
 import java.awt.event.MouseAdapter
@@ -8,7 +8,7 @@ import java.awt.event.MouseEvent
 import javax.swing.*
 
 /**
- * This class represent a puzzle board. This class paint puzzle and his tiles.
+ * This class represent a puzzle board. It paints the puzzle (his tiles).
  *
  * @param rows, puzzle rows
  * @param columns, puzzle columns
@@ -52,7 +52,8 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
     }
 
     /**
-     * This method check if there are different between tile position then update position and repaint puzzle.
+     * This method checks if there are differences from the last tiles update.
+     * If there are, then update position and repaint puzzle.
      */
     fun updateTiles(tilePositions: Map<String, Pair<Int,Int>>) = SwingUtilities.invokeAndWait {
         tiles ?: return@invokeAndWait
@@ -83,7 +84,7 @@ class PuzzleBoard(private val rows: Int, private val columns: Int, private val c
     }
 
     /**
-     * This method, if the puzzle is complete create a JOptionPane.
+     * If the puzzle is complete creates a dialog.
      */
     fun complete() = SwingUtilities.invokeAndWait  {
         status = Status.COMPLETED

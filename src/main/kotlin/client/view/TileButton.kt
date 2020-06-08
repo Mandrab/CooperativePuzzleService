@@ -1,4 +1,4 @@
-package client.view
+package main.kotlin.client.view
 
 import java.awt.Color
 import java.awt.event.MouseAdapter
@@ -9,7 +9,8 @@ import javax.swing.JButton
 
 /**
  * This class represent a tile button.
- * This class create a new button for tile which contains the image and has a red outline when clicked.
+ * Creates a new button for the tile.
+ * This one contains the image and has a red outline when clicked.
  *
  * @param tile, puzzle tile
  *
@@ -24,5 +25,8 @@ class TileButton(private val tile: Tile) : JButton(ImageIcon(tile.image)) {
         })
     }
 
+    /**
+     * Clean the image
+     */
     fun redraw() = graphics?.let { update(it) }
 }

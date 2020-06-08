@@ -1,4 +1,4 @@
-package service
+package main.kotlin.service
 
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Promise
@@ -6,7 +6,7 @@ import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.BodyHandler
 
 /**
- * This class contains all the routes that the service makes available to the client.
+ * This class contains all the routes that the service makes available to the clients.
  * For each route its handler is specified
  *
  * @author Baldini Paolo, Battistini Ylenia

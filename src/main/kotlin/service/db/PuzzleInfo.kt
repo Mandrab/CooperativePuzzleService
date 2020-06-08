@@ -1,4 +1,4 @@
-package service.db
+package main.kotlin.service.db
 
 import io.vertx.core.json.JsonObject
 
@@ -39,8 +39,9 @@ data class PuzzleInfo(
     }
 
     companion object {
+
         /**
-         * This method parse all information from JSonObject
+         * This method parse all information from JSonObject into a PuzzleInfo
          */
         fun parse(json: JsonObject): PuzzleInfo = PuzzleInfo(
             json.getString("id"),

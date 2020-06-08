@@ -7,15 +7,27 @@ import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
 import org.junit.After
 import org.junit.Before
-import service.Gateway
+import main.kotlin.service.Gateway
 import java.io.File
 import kotlin.random.Random
 
-
+/**
+ * Not a direct test class but contains useful/commons methods used in these tests
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 abstract class AbsServiceTest {
     protected val vertx: Vertx = Vertx.vertx()
     protected val client: WebClient = WebClient.create(vertx)
 
+    /**
+     * Run methods that returns futures in sequential-like mode.
+     * Methods with higher number (in pair) are executed after methods with lower value.
+     * If more methods have the same number, execute all of them before proceed with next value.
+     * The future result is discarded.
+     *
+     * @param tests an array of couple where first value indicates 'precedence' (execute ones with lower value first)
+     */
     protected fun runSequentially(vararg tests: Pair<Int, () -> Future<Any>>): Future<Any> {
         val sequenceCompleted = Promise.promise<Any>()
         val testsGroups = tests.groupBy { it.first }.toList()
@@ -41,6 +53,9 @@ abstract class AbsServiceTest {
 
     protected fun notExistingPlayer() = Random.nextBoolean().toString()
 
+    /**
+     * Clean test folder
+     */
     @After fun cleanTrash() {
         File("trash").apply {
             deleteRecursively()
@@ -48,6 +63,9 @@ abstract class AbsServiceTest {
         }
     }
 
+    /**
+     * Clean test folder and start service
+     */
     @Before fun startService() {
         File("trash").apply {
             deleteRecursively()

@@ -1,17 +1,17 @@
-package service
+package main.kotlin.service
 
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
-import service.db.DBConnector
+import main.kotlin.service.db.DBConnector
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
 /**
- * This class contains all the route handlers provided by the gateway.
+ * This class contains all the route handlers used by the gateway.
  *
  * @author Baldini Paolo, Battistini Ylenia
  */
@@ -21,7 +21,7 @@ object RESTful {
     private const val GRID_ROW_COUNT = 3
 
     /**
-     * This function create a new Puzzle with image, columns and rows.
+     * This function create a new Puzzle with default image, columns and rows.
      * This is the handler of /puzzle (POST)
      */
     internal fun newPuzzle(ctx: RoutingContext) {
@@ -48,8 +48,8 @@ object RESTful {
     }
 
     /**
-     * This function check if there is an available puzzle. If there send puzzleID.
-     * This function is handler of /puzzle ( GET).
+     * Send an array with existing puzzles IDs and status
+     * This function is handler of /puzzle (GET).
      */
     internal fun availablePuzzles(ctx: RoutingContext) {
         val jArray = JsonArray()
@@ -68,7 +68,7 @@ object RESTful {
 
     /**
      * This function get all puzzle information.
-     * Get puzzleID, imageURL, column, row, status (STARTED or COMPLETED) and get a tile's information.
+     * Get puzzleID, imageURL, column, row, status (STARTED or COMPLETED) and get tiles list.
      * This is the handler of /puzzle/:puzzleID (GET)
      */
     internal fun puzzleInfo(ctx: RoutingContext) {
@@ -105,8 +105,8 @@ object RESTful {
     }
 
     /**
-     * This function get all tile's puzzle information
-     * Get tileID, imageURL, column and row.
+     * This function get all tiles of a puzzle
+     * Get tileID, imageURL, column and row (actual position, not original one).
      * This is the handler of /puzzle/:puzzleID/tiles (GET)
      */
     internal fun getTiles(ctx: RoutingContext) {
@@ -131,7 +131,7 @@ object RESTful {
 
     /**
      * This function get information of a specific tile.
-     * Get timestamp, tileID, column and row.
+     * Get timestamp, tileID, column and row (actual position, not original one).
      * This is the handler of /puzzle/:puzzleID/:tileID (GET)
      */
     internal fun getTile(ctx: RoutingContext) {
@@ -193,7 +193,6 @@ object RESTful {
 
     /**
      * This function add a new player in a specific puzzle.
-     * The Json contains information about the puzzleID.
      * This is the handler of /puzzle/:puzzleID/user (POST)
      */
     internal fun newPlayer(ctx: RoutingContext) {
@@ -238,7 +237,7 @@ object RESTful {
     }
 
     /**
-     * This function get mouse position for a specific puzzle.
+     * This function get mouse positions for a specific puzzle.
      * This is the handler of /puzzle/:puzzleID/mouses (GET)
      */
     internal fun getPositions(ctx: RoutingContext) {
@@ -257,24 +256,25 @@ object RESTful {
     }
 
     private fun timeStamp() = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"))
+
+    private fun JsonObject.recursiveContainsKeys(vararg keys: String): Boolean {
+        return keys.all { key -> containsKey(key) || asSequence().any {
+            when (it.value) {
+                is JsonObject -> (it.value as JsonObject).recursiveContainsKeys(key)
+                is JsonArray -> (it.value as JsonArray).recursiveContainsKeys(key)
+                else -> false
+            }
+        } }
+    }
+
+    private fun JsonArray.recursiveContainsKeys(vararg keys: String): Boolean {
+        return keys.all { key -> asSequence().any {
+            when (it) {
+                is JsonObject -> it.recursiveContainsKeys(key)
+                is JsonArray -> it.recursiveContainsKeys(key)
+                else -> false
+            }
+        } }
+    }
 }
 
-fun JsonObject.recursiveContainsKeys(vararg keys: String): Boolean {
-    return keys.all { key -> containsKey(key) || asSequence().any {
-        when (it.value) {
-            is JsonObject -> (it.value as JsonObject).recursiveContainsKeys(key)
-            is JsonArray -> (it.value as JsonArray).recursiveContainsKeys(key)
-            else -> false
-        }
-    } }
-}
-
-fun JsonArray.recursiveContainsKeys(vararg keys: String): Boolean {
-    return keys.all { key -> asSequence().any {
-        when (it) {
-            is JsonObject -> it.recursiveContainsKeys(key)
-            is JsonArray -> it.recursiveContainsKeys(key)
-            else -> false
-        }
-    } }
-}

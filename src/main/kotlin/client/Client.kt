@@ -1,11 +1,11 @@
-package client
+package main.kotlin.client
 
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.http.HttpClient
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
-import client.view.PuzzleBoard
-import client.view.Tile
+import main.kotlin.client.view.PuzzleBoard
+import main.kotlin.client.view.Tile
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.http.WebSocket
@@ -18,9 +18,9 @@ import javax.swing.ImageIcon
 
 /**
  * This is a client class.
- * The client uses the rest api to request information from the service.
+ * The client uses the rest api to request/update information from the service.
  *
- * @param port, port to make request.
+ * @param port, port to make request on.
  *
  * @author Baldini Paolo, Battistini Ylenia
  */
@@ -39,9 +39,10 @@ class Client(private val port: Int) : AbstractVerticle() {
     private var puzzleIDTimestamp: Timestamp = Timestamp(Date().time)
 
     /**
-     * When the client starts its execution in order to play it must first request a puzzle from the service.
-     * It use a get api (/puzzle) to check If there is an available puzzle then return it otherwise use a post api to create a new one.
-     * In both cases he gets the information from server and creates the puzzle board also creates the tiles.
+     * When the client starts its execution, in order to play it first requests a puzzle from the service.
+     * It use a get api (/puzzle) to check If there is an available puzzle then join it, otherwise use a post api
+     * to create a new one. In both cases he gets the information from server and creates the puzzle board.
+     * Also, it download puzzle tiles from server.
      */
     override fun start() {
         val httpClient: HttpClient = vertx.createHttpClient()
@@ -86,7 +87,7 @@ class Client(private val port: Int) : AbstractVerticle() {
                     }.onFailure { println("Something went wrong ${it.message}") }
                 }
 
-                // UNCOMMENT TO USE WS
+                // ----------- UNCOMMENT TO USE WS -----------
                 /*httpClient.webSocket(port, SERVICE_HOST, "/puzzle/$puzzleID/mouses").onSuccess {
                     webSocket = it
                     webSocket.binaryMessageHandler {
@@ -120,8 +121,9 @@ class Client(private val port: Int) : AbstractVerticle() {
     }
 
     /**
-     * This method through a put request  the server to update the tile positions.
-     * Use the API /puzzle/:{puzzleID}/:{tileID} to be able to update specifies the puzzleID, the tileID, playerToken and the new positions.
+     * This method, through a put, request the server to update the tile positions.
+     * The root /puzzle/:{puzzleID}/:{tileID} needs puzzleID and tileID to be reached,
+     * then playerToken and the new positions are required.
      *
      * @param tile, represent one Tile of puzzle
      * @param newColumn, new position for column
@@ -137,10 +139,10 @@ class Client(private val port: Int) : AbstractVerticle() {
     }
 
     /**
-     * This method through a put request the server to update the mouse positions.
-     * Use the API /puzzle/:{puzzleID}/:mouses to be able to update specifies playerToken and the new positions x and y.
-     * This method use also a timeStamp to specify the time of sending the request
-     * It also shows how updating can be done with webSocket.
+     * This method, through a put, request the server to update the mouse position.
+     * Use the API /puzzle/:{puzzleID}/:mouses to update and specifies playerToken and new x and y positions.
+     * This method use also a timeStamp to specify the time of the update-message send
+     * It can eventually use WebSocket for update, if initialized.
      *
      * @param x, x position
      * @param y, y position.
@@ -165,8 +167,9 @@ class Client(private val port: Int) : AbstractVerticle() {
     }
 
     /**
-     * This method through a get request using the API /puzzle/:{puzzleID} allows to obtain from the service all the information of the puzzle.
-     * This method uses the timestamp to verify that the information I get is up to date with what I already had.
+     * This method, through a get request, using the API /puzzle/:{puzzleID}, allows to obtain
+     * all the information of the puzzle from the service.
+     * This method uses the timestamp to verify that the information I get is newer than the one that I already had.
      */
     private fun infoPuzzle(): Future<PuzzleInfo> {
         val result = Promise.promise<PuzzleInfo>()
@@ -197,7 +200,7 @@ class Client(private val port: Int) : AbstractVerticle() {
 
     /**
      * This method periodically schedules the request to server to obtain information
-     * in order to have the updated information.
+     * in order to have updated information.
      * The information that is required is information about the puzzle and mouse positions.
      * This method uses the timestamp to verify that the mouse's information I get is up to date with what I already had.
      */

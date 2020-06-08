@@ -1,11 +1,11 @@
-package client.view
+package main.kotlin.client.view
 
 import java.awt.Color
 import java.awt.Graphics2D
 import javax.swing.JComponent
+
 /**
- * This class represent a JComponent.
- * This class is used to draw the pointer on the puzzle in a certain position.
+ * This class is used to draw the pointers on the puzzle in a specified position.
  *
  * @author Baldini Paolo, Battistini Ylenia
  */

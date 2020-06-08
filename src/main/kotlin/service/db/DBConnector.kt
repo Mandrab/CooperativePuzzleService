@@ -1,4 +1,4 @@
-package service.db
+package main.kotlin.service.db
 
 import io.vertx.core.json.JsonObject
 import java.io.File
@@ -7,15 +7,16 @@ import java.time.LocalDateTime
 import javax.imageio.ImageIO
 import kotlin.random.Random
 
-
 /**
  * This class *simulate* a db-connector to store files on a DB.
- * Truly, it uses file storage.
- * Each puzzle consists of three main files, the one containing the puzzle information,
- * the one containing the players and the one containing the tiles for each puzzle.
+ * Truly, it uses file as storage.
+ * Each puzzle consists of three main files/folder:
+ *      one folder containing the puzzle tiles,
+ *      one file containing the players information,
+ *      one file containing the tiles' information for each puzzle.
  * Whenever information needs to be updated/written, the files are written or read.
  *
- * @author Paolo Baldini
+ * @author Baldini Paolo, Battistini Ylenia
  */
 object DBConnector {
     private val PATH_PREFIX = "trash${File.separator}"
@@ -133,12 +134,6 @@ object DBConnector {
         )
         return true
     }
-
-    fun playerWS(puzzleID: String, playerID: String): String? = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
-        .readLines().map { PlayerInfo.parse(JsonObject(it)) }.firstOrNull { it.playerID == playerID }?.socketHandlerID
-
-    fun playersWS(puzzleID: String): List<String> = File(PATH_PREFIX + puzzleID + PLAYERS_SUFFIX)
-            .readLines().map { PlayerInfo.parse(JsonObject(it)) }.mapNotNull { it.socketHandlerID }
 
     private fun genTilesImage(path: String, puzzleID: String, columns: Int, rows: Int): List<String>? {
         val image = try { ImageIO.read(File(path)) }

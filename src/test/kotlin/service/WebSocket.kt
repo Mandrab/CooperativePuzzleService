@@ -6,12 +6,16 @@ import io.vertx.core.http.WebSocket
 import io.vertx.core.json.JsonObject
 import org.junit.Assert
 import org.junit.Test
-import service.Gateway
+import main.kotlin.service.Gateway
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.test.assertEquals
 
-
+/**
+ * Tests system coherence after mouse's position submission through WebSocket
+ *
+ * @author Baldini Paolo, Battistini Ylenia
+ */
 class WebSocket : AbsServiceTest() {
     private lateinit var puzzleID: String
     private lateinit var playerID: String

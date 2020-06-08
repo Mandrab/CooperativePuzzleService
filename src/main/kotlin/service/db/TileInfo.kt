@@ -1,4 +1,4 @@
-package service.db
+package main.kotlin.service.db
 
 import io.vertx.core.json.JsonObject
 
@@ -36,7 +36,7 @@ data class TileInfo(
 
     companion object {
         /**
-         * This method parse all information from JSonObject
+         * This method parse all information from JSonObject into a TileInfo
          */
         fun parse(json: JsonObject): TileInfo = TileInfo(
             json.getString("id"),
