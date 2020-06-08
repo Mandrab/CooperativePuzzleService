@@ -6,9 +6,17 @@ import io.vertx.core.json.JsonObject
 import service.db.DBConnector
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+/*
+This object represent a webSocket.
+This is an alternative to Rest API polling.
 
+@author Baldini Paolo, Battistini Ylenia
+ */
 object WebSocket {
 
+    /*
+    This function verifies that the request matching with pattern. If so, call the handler.
+     */
     internal fun webSocketHandler(ws: ServerWebSocket, vertx: Vertx) {
         when (ws.path()) {
             in Regex("/puzzle\\/([A-Z]|[a-z]|[0-9])*\\/mouses") -> mouseHandler(ws, vertx)
@@ -21,6 +29,11 @@ object WebSocket {
 
     private operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
 
+    /*
+    This is the handler function.
+    This function extracts the information from the jsonObject and,
+    if the timestamp is more updated than the one I had updates the position
+     */
     private fun mouseHandler(ws: ServerWebSocket, vertx: Vertx) {
         ws.binaryMessageHandler {
             val jObject = it.toJsonObject()

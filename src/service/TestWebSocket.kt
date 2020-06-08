@@ -32,6 +32,9 @@ class TestWebSocket {
         assertEquals("Other problems in service prevent from run this",3, result.result)
     }
 
+    /*
+    Test open a webSocket and try to send information.
+     */
     private fun sendAndReceiveData(puzzleID: String, playerID: String): Future<Boolean> {
         val result = Promise.promise<Boolean>()
 
@@ -51,6 +54,9 @@ class TestWebSocket {
         return result.future()
     }
 
+    /*
+    Test create puzzle
+     */
     private fun createPuzzle(): Future<String> {
         val returns = Promise.promise<String>()
 
@@ -61,6 +67,9 @@ class TestWebSocket {
         return returns.future()
     }
 
+    /*
+    Test create a new player for puzzle
+     */
     private fun joinWithUser(puzzleID: String): Future<String> {
         val playerID = "Marcantonio"
         val result = Promise.promise<String>()

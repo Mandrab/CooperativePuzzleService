@@ -2,7 +2,17 @@ package service.db
 
 import io.vertx.core.json.JsonObject
 
+/*
+This class represent a player information.
 
+@param puzzleID, id of puzzle
+@param imageURL, url of the puzzle image
+@param columnsCount, columns of puzzle image
+@param rowsCount, rows of puzzle image
+@param status, status of puzzle (STARTED or COMPLETED)
+
+@author Baldini Paolo, Battistini Ylenia
+ */
 data class PuzzleInfo(
     val puzzleID: String,
     val imageURL: String,
@@ -15,6 +25,9 @@ data class PuzzleInfo(
         COMPLETED
     }
 
+    /*
+    This method add all information in a JSonObject
+     */
     fun toJson(): JsonObject = JsonObject().apply {
         put("id", puzzleID)
         put("image_url", imageURL)
@@ -26,6 +39,9 @@ data class PuzzleInfo(
     }
 
     companion object {
+        /*
+        This method parse all information from JSonObject
+        */
         fun parse(json: JsonObject): PuzzleInfo = PuzzleInfo(
             json.getString("id"),
             json.getString("image_url"),
