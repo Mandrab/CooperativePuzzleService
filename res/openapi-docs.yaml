@@ -39,36 +39,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Puzzle'
-        # TODO impossibile creare
-          #links:
-          #  getPuzzle:
-          #    operationId: getPuzzle
-          #    parameters:
-          #      puzzleID: '$response.body#/puzzleID'
-          #    description: >
-          #      The `puzzleID` value returned in the response can be used as
-          #      the `puzzleID` parameter in `GET /puzzle/{puzzleID}`.
     get:
       operationId: getPuzzlesIDs
       tags:
         - puzzle
-      summary: Return a collection of all the open game-sessions' IDs
+      summary: Return a collection of all the puzzles' IDs and status
       responses:
         '200':
-          description: Return a json-array containing all the puzzle-sessions' IDs
+          description: Return a json-array containing all the puzzles' IDs and status
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: string
+                type: object
+                properties:  
+                  timeStamp:
+                    type: string
+                    description: send time</br>format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+                  puzzles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ID:
+                          type: string
+                        status:
+                          type: string
+                          enum: [started, completed]
 
   '/puzzle/{puzzleID}':
     get:
       operationId: getPuzzleInfo
       tags:
         - puzzle
-      summary: Access information of an in-game puzzle
+      summary: Access information of a puzzle
       parameters:
         - in: path
           name: puzzleID
@@ -81,11 +84,18 @@ paths:
           description: Return information about the puzzle, including\:<br/>
             - image URL<br/>
             - size of the puzzle (i.e., columns and rows)<br/>
+            - status of the puzzle<br/>
             - positions of all the tiles
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PuzzleInfo'
+                type: object
+                properties:  
+                  timeStamp:
+                    type: string
+                    description: send time</br>format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+                  info:
+                    $ref: '#/components/schemas/PuzzleInfo'
         '404':
           description: Puzzle not found
   
@@ -108,9 +118,15 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tile'
+                type: object
+                properties:  
+                  timeStamp:
+                    type: string
+                    description: send time</br>format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+                  tiles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tile'
         '404':
           description: Puzzle not found
 
@@ -185,6 +201,9 @@ paths:
               schema:
                 type: object
                 properties:
+                  timeStamp:
+                    type: string
+                    description: send time</br>format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
                   imageURL:
                     type: string
                   column:
@@ -217,7 +236,7 @@ paths:
                 properties:
                   playerToken:
                     type: string
-                    description: Represents the player inside the game
+                    description: Represents the player inside the game. It's generated automatically by the system.
         '404':
           description: Puzzle not found
   
@@ -240,6 +259,9 @@ paths:
             schema:
               type: object
               properties:
+                timeStamp:
+                  type: string
+                  description: send time</br>format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
                 playerToken:
                   type: string
                 position:
@@ -252,11 +274,13 @@ paths:
                   description: 2 dimensional position in the game-window.
       responses:
         '200':
-          description: Position created
-        '201':
           description: Position updated successfully
+        '201':
+          description: Position created
         '404':
           description: Puzzle or player not found
+        '409':
+          description: Timestamp of submitted position is older than known one
     get:
       operationId: getPlayersPositions
       tags:
@@ -275,19 +299,24 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    playerID:
-                      type: string
-                    position:
+                type: object
+                properties:
+                  timeStamp:
+                    type: string
+                  positions:
+                    type: array
+                    items:
                       type: object
                       properties:
-                        x:
-                          type: integer
-                        y:
-                          type: integer
+                        playerID:
+                          type: string
+                        position:
+                          type: object
+                          properties:
+                            x:
+                              type: integer
+                            y:
+                              type: integer
         '404':
           description: Puzzle not found
 
@@ -323,7 +352,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tile'
-      description: An object containing information about image URI, grid-size (i.e., rows and columns) and tiles of the puzzle.
+      description: An object containing information about image URI, grid-size (i.e., rows and columns), status and tiles of the puzzle.
 
     Tile:
       type: object

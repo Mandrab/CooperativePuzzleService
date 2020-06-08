@@ -30,10 +30,12 @@ object RESTful {
         ctx.response().apply {
             statusCode = 201
             putHeader("content-type", "application/json")
-            end(JsonObject().put("puzzleID", puzzleID).put("imageURL", "res${File.separator}$IMAGE_URL")
-                    .put("columns", GRID_COL_COUNT).put("rows",
-                    GRID_ROW_COUNT
-                ).encode())
+            end(
+                JsonObject().put("puzzleID", puzzleID)
+                    .put("imageURL", "res${File.separator}$IMAGE_URL")
+                    .put("columns", GRID_COL_COUNT)
+                    .put("rows", GRID_ROW_COUNT).encode()
+            )
         }
     }
 

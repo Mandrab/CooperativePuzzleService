@@ -20,7 +20,7 @@ servers:
     protocol: ws
 
 channels:
-  /puzzle/{puzzleID}/user:
+  /puzzle/{puzzleID}/mouses:
     parameters:
       puzzleID:
         description: ID of the puzzle on which push mouse positions
@@ -32,6 +32,9 @@ channels:
         payload:
           type: object
           properties:
+            timeStamp:
+              type: string
+              description: Send time format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
             playerToken:
               type: string
               description: Player token given by puzzle service at subscription
@@ -48,20 +51,26 @@ channels:
       message:
         summary: Represent movement of a player pointer.
         payload:
-          type: array
-          items:
-            type: object
-            properties:
-              playerID:
-                type: string
-                description: Player identifier
-              position:
+          type: object
+          properties:
+            timeStamp:
+              type: string
+              description: Send time format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
+            positions:
+              type: array
+              items:
                 type: object
                 properties:
-                  x:
-                    type: integer
-                  y:
-                    type: integer
-                description: 2 dimensional position in the game-window
-            description: Player's ID and 2D position
-          description: Positions of players pointers
+                  playerID:
+                    type: string
+                    description: Player identifier
+                  position:
+                    type: object
+                    properties:
+                      x:
+                        type: integer
+                      y:
+                        type: integer
+                    description: 2 dimensional position in the game-window
+                description: Player's ID and 2D position
+              description: Collection of players' pointers positions
