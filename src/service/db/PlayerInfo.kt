@@ -3,15 +3,15 @@ package service.db
 import io.vertx.core.json.JsonObject
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-/*
-This class represent a player information.
-
-@param playerID, id of player
-@param socketHandlerID, socket handler
-@param last position, position of player (last update)
-@param timeStamp, date-time
-
-@author Baldini Paolo, Battistini Ylenia
+/**
+ * This class represent a player information.
+ *
+ * @param playerID, id of player
+ * @param socketHandlerID, socket handler
+ * @param last position, position of player (last update)
+ * @param timeStamp, date-time
+ *
+ * @author Baldini Paolo, Battistini Ylenia
  */
 data class PlayerInfo(
     val playerID: String,
@@ -19,8 +19,8 @@ data class PlayerInfo(
     val lastPosition: Pair<Int, Int>? = null,
     val timeStamp: LocalDateTime? = null
 ) {
-    /*
-    This method add all information in a JSonObject
+    /**
+     * This method add all information in a JSonObject
      */
     fun toJson(): JsonObject = JsonObject().apply {
         put("id", playerID)
@@ -31,9 +31,9 @@ data class PlayerInfo(
 
     companion object {
         const val TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSSSSS"
-        /*
-        This method parse all information from JSonObject
-        */
+        /**
+         * This method parse all information from JSonObject
+         */
         fun parse(json: JsonObject): PlayerInfo = PlayerInfo(
             json.getString("id"),
             json.getString("socket_handler_id"),
