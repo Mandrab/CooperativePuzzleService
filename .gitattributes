@@ -1,3 +1,2 @@
 res/bletchley-park-mansion.jpg filter=lfs diff=lfs merge=lfs -text
-res/tux_icon.png filter=lfs diff=lfs merge=lfs -text
 res/multiplayer_puzzle.gif filter=lfs diff=lfs merge=lfs -text
